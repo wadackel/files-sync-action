@@ -1,0 +1,32 @@
+name: 'files-sync-action'
+description: 'A customizable action that synchronizes files across multiple repositories.'
+author: 'wadackel'
+branding:
+  color: white
+  icon: git-pull-request
+
+inputs:
+  github_token:
+    description: 'Personal Access Token to use to create file sync and PR. Required if `GITHUB_APP_*` is not specified.'
+  github_app_id:
+    description: 'The ID of the GitHub App. Required if `GITHUB_TOKEN` is not specified.'
+  github_app_installation_id:
+    description: 'The ID of the GitHub App installation for which the token will be requested. Required if `GITHUB_TOKEN` is not specified.'
+  github_app_private_key:
+    description: 'The private key of your GitHub app (Base64 encoded or raw string supported). Required if `GITHUB_TOKEN` is not specified.'
+  github_api_url:
+    description: 'API URL of the GitHub server.'
+    default: 'https://api.github.com'
+  config_file:
+    description: 'The path for the sync configuration file.'
+    default: '.github/files-sync-config.yml'
+
+outputs:
+  pull_request_urls:
+    description: 'URL array of PRs created to synchronize files.'
+  synced_files:
+    description: 'An array of all synchronized file names.'
+
+runs:
+  using: 'node16'
+  main: 'dist/index.js'

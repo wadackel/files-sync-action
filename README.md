@@ -1,0 +1,416 @@
+<div align="center">
+
+# :package: Files Sync Action
+
+A customizable action that synchronizes files across multiple repositories.
+
+[![Build][badge-build]][build]
+[![MIT LICENSE][badge-license]][license]
+[![code style: prettier][badge-prettier]][prettier]
+[![semantic-release: angular][badge-semantic-release]][semantic-release]
+
+</div>
+
+`files-sync-action` is a GitHub Action that synchronizes files across multiple repositories based on a configuration file written in YAML. It is useful in cases where you want to unify files, such as various tool configuration files or workflow files, across repositories. There are various patterns for motivation to synchronize files, depending on the team. To support these use cases, it allows for detailed configuration.
+
+## Features
+
+- :arrows_counterclockwise: Create PRs to synchronize files and directories across multiple repositories
+- :hammer_and_wrench: Support flexible configuration of reviewers and labels for PRs
+- :robot: Support authentication using GitHub App tokens
+- :pencil: Support file customization using [EJS][ejs]
+
+## Usage
+
+In this section, we explain the most common usage of `files-sync-action`. To start using it, simply create a Workflow file that runs `files-sync-action` and a configuration file, as shown below:
+
+`.github/workflows/files-sync.yml`
+
+```yaml
+name: Sync Files
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: wadackel/files-sync-action@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_FILES_SYNC_TOKEN }}
+```
+
+`.github/files-sync-config.yml`
+
+```yaml
+settings:
+  pull_request:
+    reviewers:
+      - 'wadackel'
+    labels:
+      - 'files-sync'
+
+patterns:
+  - files:
+      - tsconfig.json
+      - .prettierrc.json
+      - from: workflows/ci.yml
+        to: .github/workflows/ci.yml
+    repositories:
+      - owner/repo1
+      - owner/repo2
+```
+
+If you need more customization, please refer to the [Sync Configuration](#sync-configuration) section.
+
+### Authentication
+
+`files-sync-action` supports authentication using both Personal Access Tokens and GitHub Apps.
+
+We recommend using [Fine-grained personal access tokens][fine-grained-pat] for Personal Access Token authentication, as they allow for more granular access control compared to traditional tokens. Authentication using GitHub Apps is useful for team development.
+
+To use `files-sync-action`, you need to set the following `Repository permissions` for each respective token:
+
+| Type              | Permission                                                          |
+| :---------------- | :------------------------------------------------------------------ |
+| **Contents**      | `Read and write`                                                    |
+| **Pull requests** | `Read and write`                                                    |
+| **Metadata**      | `Read and write`                                                    |
+| **Workflows**     | To synchronize Workflow files: `Read and write`, Other: `No access` |
+
+## Inputs
+
+<!-- inputs-start -->
+
+### `github_token`
+
+**Required:** `false`  
+**Default:** n/a
+
+Personal Access Token to use to create file sync and PR. Required if `GITHUB_APP_*` is not specified.
+
+### `github_app_id`
+
+**Required:** `false`  
+**Default:** n/a
+
+The ID of the GitHub App. Required if `GITHUB_TOKEN` is not specified.
+
+### `github_app_installation_id`
+
+**Required:** `false`  
+**Default:** n/a
+
+The ID of the GitHub App installation for which the token will be requested. Required if `GITHUB_TOKEN` is not specified.
+
+### `github_app_private_key`
+
+**Required:** `false`  
+**Default:** n/a
+
+The private key of your GitHub app (Base64 encoded or raw string supported). Required if `GITHUB_TOKEN` is not specified.
+
+### `github_api_url`
+
+**Required:** `false`  
+**Default:** `https://api.github.com`
+
+API URL of the GitHub server.
+
+### `config_file`
+
+**Required:** `false`  
+**Default:** `.github/files-sync-config.yml`
+
+The path for the sync configuration file.
+
+<!-- inputs-end -->
+
+## Outputs
+
+<!-- outputs-start -->
+
+### `pull_request_urls`
+
+URL array of PRs created to synchronize files.
+
+### `synced_files`
+
+An array of all synchronized file names.
+
+<!-- outputs-end -->
+
+## Sync Configuration
+
+The configuration file for file synchronization can be written in YAML. By default, it refers to `.github/files-sync-config.yml`. If you want to change the path, please modify the value of `inputs.config_file`.
+
+The configuration file consists of a `settings` section, which defines common settings, and a `patterns` section, which defines individual file synchronization patterns. The contents defined in `settings` are inherited by all `patterns`.
+
+| Key        | Required | Type                   | Description                                                           |
+| :--------- | :------- | :--------------------- | :-------------------------------------------------------------------- |
+| `settings` | `false`  | [SettingsConfig]       | Settings to be used commonly across all file synchronization patterns |
+| `patterns` | `true`   | Array<[PatternConfig]> | File synchronization patterns                                         |
+
+### `SettingsConfig`
+
+Configure the settings to be used commonly across all file synchronization patterns. You can customize the default commit and branch settings, as well as the contents of the PR.
+
+| Key            | Required | Type                | Description                                             |
+| :------------- | :------- | :------------------ | :------------------------------------------------------ |
+| `commit`       | `false`  | [CommitConfig]      | Various settings related to commits                     |
+| `branch`       | `false`  | [BranchConfig]      | Various settings related to branches                    |
+| `pull_request` | `false`  | [PullRequestConfig] | Various settings related to automatically generated PRs |
+
+**Defaults:**
+
+```yaml
+settings:
+  commit:
+    # defaults to "chore: sync files with `owner/repo`"
+    format: '<%- prefix %>: <%- subject %>'
+    prefix: 'chore'
+    subject: 'sync files with `<%- repository %>`'
+  branch:
+    # defaults to "files-sync/owner-repo-0"
+    format: '<%- prefix %>/<%- repository %>-<%- index %>'
+    prefix: 'files-sync'
+  pull_request:
+    disabled: false
+    title: 'Sync files with `<%- repository %>`'
+    body: |
+      This PR contains the following updates:
+
+      | :chart_with_upwards_trend: Change | :hammer_and_wrench: Synchronizing Repository | :link: Workflow |
+      | :-- | :-- | :-- |
+      | <%- changes.length %> files | [<%- repository %>](<%- github %>/<%- repository %>) | [\`<%- workflow %>#<%- run.number %>\`](<%- run.url %>) |
+
+      ---
+
+      ### Changed Files
+
+      <%_ for (const file of changes) { -%>
+      - <% if (file.from === file.to) { %>\`<%- file.to %>\`<% } else { %>\`<%- file.from %>\` to \`<%- file.to %>\`<% }%>
+      <%_ } -%>
+    reviewers: []
+    assignees: []
+    labels: []
+```
+
+### `PatternConfig`
+
+Configure the synchronization pattern for files and directories and the target repositories for synchronization. While inheriting the contents defined in `settings`, you can customize the commit, branch, and PR settings for each synchronization pattern.
+
+| Key            | Required | Type                          | Description                                                                                        |
+| :------------- | :------- | :---------------------------- | :------------------------------------------------------------------------------------------------- |
+| `files`        | `true`   | Array<string \| [FileConfig]> | List of files to synchronize. Supports files and directories.                                      |
+| `repositories` | `true`   | Array<string>                 | List of repositories to synchronize the files specified in `files`                                 |
+| `commit`       | `false`  | [CommitConfig]                | Various settings related to commits                                                                |
+| `branch`       | `false`  | [BranchConfig]                | Various settings related to branches                                                               |
+| `pull_request` | `false`  | [PullRequestConfig]           | Various settings related to automatically generated PRs                                            |
+| `template`     | `false`  | Record<string, any>           | Template variables to use for the files specified in `files`. Disables [EJS][ejs] if not specified |
+
+**Examples:**
+
+```yaml
+patterns:
+  - files:
+      - tsconfig.json # file (simple)
+      - from: workflows/ci.yml # file (details)
+        to: .github/workflows/ci.yml
+      - from: shared # directory
+        to: shared
+        exclude:
+          - '*.txt'
+    repositories:
+      - owner/repo1
+      - owner/repo2
+      - owner/repo3
+    commit:
+      prefix: 'build'
+    pull_request:
+      reviewers:
+        - 'team:team_name'
+        - 'login_name'
+      labels:
+        - 'A-build'
+```
+
+### `FileConfig`
+
+Configure the details of the files to synchronize. When synchronizing a directory, you can use `exclude` to exclude only certain file patterns.
+
+| Key       | Required | Type       | Description                                                                                                                                 |
+| :-------- | :------- | :--------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
+| `from`    | `true`   | `string`   | Source file or directory path for synchronization                                                                                           |
+| `to`      | `true`   | `string`   | Destination file or directory path for synchronization                                                                                      |
+| `exclude` | `false`  | `string[]` | Glob patterns of files to exclude from the contents of a directory (only valid for directories). Glob patterns use [micromatch][micromatch] |
+
+### `CommitConfig`
+
+Configure the commit contents to use when synchronizing files.
+
+| Key       | Required | Type     | Description                                           |
+| :-------- | :------- | :------- | :---------------------------------------------------- |
+| `format`  | `false`  | `string` | Commit message format. Supports [EJS][ejs] templates  |
+| `prefix`  | `false`  | `string` | Commit message prefix                                 |
+| `subject` | `false`  | `string` | Commit message subject. Supports [EJS][ejs] templates |
+
+The following template variables are available for various keys:
+
+#### `commit.format`
+
+| Key          | Type     | Description                                                                |
+| :----------- | :------- | :------------------------------------------------------------------------- |
+| `prefix`     | `string` | Commit message prefix specified in [`commit.prefix`][CommitConfig]         |
+| `subject`    | `string` | Commit message subject specified in [`commit.subject`][CommitConfig]       |
+| `repository` | `string` | Source repository name (the repository where the Action is being executed) |
+| `index`      | `number` | Index of the file synchronization pattern                                  |
+
+#### `commit.subject`
+
+| Key          | Type     | Description                                                                |
+| :----------- | :------- | :------------------------------------------------------------------------- |
+| `repository` | `string` | Source repository name (the repository where the Action is being executed) |
+| `index`      | `number` | Index of the file synchronization pattern                                  |
+
+### `BranchConfig`
+
+Configure the branch to commit to when synchronizing files.
+
+| Key      | Required | Type     | Description                                       |
+| :------- | :------- | :------- | :------------------------------------------------ |
+| `format` | `false`  | `string` | Branch name format. Supports [EJS][ejs] templates |
+| `prefix` | `false`  | `string` | Prefix for the branch name                        |
+
+The following template variables are available for various keys:
+
+#### `branch.format`
+
+| Key          | Type     | Description                                                                                                       |
+| :----------- | :------- | :---------------------------------------------------------------------------------------------------------------- |
+| `prefix`     | `string` | Branch name prefix specified in [branch.prefix][BranchConfig]                                                     |
+| `repository` | `string` | Source repository name (the repository where the Action is being executed), encoded in a valid branch name format |
+| `index`      | `number` | Index of the file synchronization pattern                                                                         |
+
+### `PullRequestConfig`
+
+| Key         | Required | Type       | Description                                                                                                                             |
+| :---------- | :------- | :--------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
+| `disabled`  | `false`  | `boolean`  | Flag to disable PR when synchronizing files. If disabled, file synchronization will only push without creating a PR                     |
+| `title`     | `false`  | `string`   | Title of the automatically generated PR. Supports [EJS][ejs] templates                                                                  |
+| `body`      | `false`  | `string`   | Content of the automatically generated PR. Supports [EJS][ejs] templates                                                                |
+| `reviewers` | `false`  | `string[]` | List of reviewers to set for the automatically generated PR. To specify a team as a reviewer, add `team:` as a prefix to the login name |
+| `assignees` | `false`  | `string[]` | List of assignees to set for the automatically generated PR. Team assignment is not supported                                           |
+| `labels`    | `false`  | `string[]` | List of labels to set for the automatically generated PR                                                                                |
+
+The following template variables are available for various keys:
+
+#### `pull_request.title`
+
+| Key          | Type     | Description                                                                |
+| :----------- | :------- | :------------------------------------------------------------------------- |
+| `repository` | `string` | Source repository name (the repository where the Action is being executed) |
+| `index`      | `number` | Index of the file synchronization pattern                                  |
+
+#### `pull_request.body`
+
+| Key          | Type                             | Description                                                                |
+| :----------- | :------------------------------- | :------------------------------------------------------------------------- |
+| `github`     | `string`                         | GitHub server URL                                                          |
+| `repository` | `string`                         | Source repository name (the repository where the Action is being executed) |
+| `workflow`   | `string`                         | Name of the Workflow running the Action                                    |
+| `run`        | `object`                         | Object related to the Workflow execution                                   |
+| `run.id`     | `string`                         | Execution ID of the Workflow                                               |
+| `run.number` | `string`                         | Execution number of the Workflow                                           |
+| `run.url`    | `string`                         | URL of the Workflow execution log                                          |
+| `changes`    | `{ from: string; to: string }[]` | List of changed files                                                      |
+| `index`      | `number`                         | Index of the file synchronization pattern                                  |
+
+## Credits
+
+`files-sync-action` is inspired by the following GitHub Actions. Thanks!!
+
+- [BetaHuhn/repo-file-sync-action](https://github.com/BetaHuhn/repo-file-sync-action)
+- [adrianjost/files-sync-action](https://github.com/adrianjost/files-sync-action)
+
+## Development
+
+Introducing the steps for developing `files-sync-action`.
+
+### Setup
+
+Using a Node.js Version Manager such as `asdf` or `nodenv`, activate the version of Node.js written in `.node-version`.
+
+Next, activate `pnpm` using `corepack`, and install the dependent packages.
+
+```bash
+$ corepack enable pnpm
+$ pnpm i
+```
+
+### Local Testing
+
+Introducing cases where you want to verify the operation of `files-sync-action` on your local machine during development.
+
+Create a configuration file for local testing and a script for running tests. These files are excluded from Git management by `.gitignore`.
+
+```bash
+$ touch test.yml test.js
+```
+
+Customize the contents of each created file.
+
+`test.js`
+
+```javascript
+process.env['INPUT_GITHUB_TOKEN'] = '...';
+process.env['INPUT_CONFIG_FILE'] = 'test.yml';
+process.env['INPUT_GITHUB_API_URL'] = 'https://api.github.com';
+process.env['GITHUB_SERVER_URL'] = 'https://github.com';
+process.env['GITHUB_REPOSITORY'] = 'local/test';
+process.env['GITHUB_RUN_ID'] = '0';
+process.env['GITHUB_RUN_NUMBER'] = '0';
+await import('./dist/index.js');
+```
+
+`test.yml`
+
+```yaml
+patterns:
+  - files:
+      - README.md
+      # ...
+    repositories:
+      - your/repo
+```
+
+To modify the implementation of `files-sync-action` and verify it on your local machine, build the script locally and run it using the configuration file created for testing.
+
+```bash
+$ pnpm build && node test.js
+```
+
+## LICENSE
+
+[MIT © wadackel][license]
+
+[badge-build]: https://img.shields.io/github/actions/workflow/status/wadackel/files-sync-action/ci.yml?style=for-the-badge
+[badge-license]: https://img.shields.io/github/license/wadackel/files-sync-action?style=for-the-badge
+[badge-prettier]: https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=for-the-badge
+[badge-semantic-release]: https://img.shields.io/badge/semantic--release-angular-e10079?logo=semantic-release&style=for-the-badge
+[build]: https://github.com/wadackel/files-sync-action/actions/workflows/ci.yml
+[license]: ./LICENSE
+[prettier]: https://github.com/prettier/prettier
+[semantic-release]: https://github.com/semantic-release/semantic-release
+[ejs]: https://ejs.co
+[micromatch]: https://github.com/micromatch/micromatch
+[fine-grained-pat]: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token#creating-a-fine-grained-personal-access-token
+[SettingsConfig]: #settingsconfig
+[PatternConfig]: #patternconfig
+[CommitConfig]: #commitconfig
+[BranchConfig]: #branchconfig
+[PullRequestConfig]: #pullrequestconfig
+[FileConfig]: #fileconfig

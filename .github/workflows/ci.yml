@@ -1,0 +1,88 @@
+name: 'ci'
+
+on:
+  pull_request:
+    types:
+      - synchronize
+      - opened
+      - reopened
+  push:
+    branches:
+      - main
+      - 'releases/*'
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3.5.0
+      - uses: ./.github/actions/setup-node
+      - run: pnpm build
+
+  typecheck:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3.5.0
+      - uses: ./.github/actions/setup-node
+      - run: pnpm typecheck
+
+  test:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3.5.0
+      - uses: ./.github/actions/setup-node
+      - run: pnpm test
+
+  lint:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3.5.0
+      - uses: ./.github/actions/setup-node
+      - run: pnpm lint
+
+  generate:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3.5.0
+      - uses: ./.github/actions/setup-node
+      - run: pnpm generate
+      - run: git diff --exit-code || exit 1
+
+  pass:
+    runs-on: ubuntu-20.04
+    needs:
+      - build
+      - typecheck
+      - test
+      - lint
+      - generate
+    steps:
+      - run: exit 0
+
+  publish:
+    runs-on: ubuntu-20.04
+    if: github.ref == 'refs/heads/main'
+    needs:
+      - pass
+    steps:
+      - uses: actions/checkout@v3.5.0
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v2.2.4
+      # Ignore the value of `.node-version` because semantic-release expects v18.x.
+      - uses: actions/setup-node@v3.6.0
+        with:
+          node-version: '18.x'
+          cache: 'pnpm'
+      - name: Generate token
+        id: generate_token
+        uses: tibdex/github-app-token@b62528385c34dbc9f38e5f4225ac829252d1ea92 # v1.8.0
+        with:
+          app_id: ${{ secrets.GH_APP_RELEASER_ID }}
+          installation_id: ${{ secrets.GH_APP_RELEASER_INSTALLATION_ID }}
+          private_key: ${{ secrets.GH_APP_RELEASER_PRIVATE_KEY }}
+      - run: pnpm i --frozen-lockfile
+      - name: Release
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: pnpm release

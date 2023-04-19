@@ -13,6 +13,16 @@ A customizable action that synchronizes files across multiple repositories.
 
 `files-sync-action` is a GitHub Action that synchronizes files across multiple repositories based on a configuration file written in YAML. It is useful in cases where you want to unify files, such as various tool configuration files or workflow files, across repositories. There are various patterns for motivation to synchronize files, depending on the team. To support these use cases, it allows for detailed configuration.
 
+The following links are the actual PR and Workflow execution result logs:
+
+[Actual PR](https://github.com/wadackel/files-sync-action-sandbox1/pull/1) | [Workflow Run Log](https://github.com/wadackel/files-sync-action/actions/runs/4740171900/jobs/8415765398)
+
+<div align="center">
+
+![Screenshot](./assets/screenshot.png)
+
+</div>
+
 ## Features
 
 - :arrows_counterclockwise: Create PRs to synchronize files and directories across multiple repositories
@@ -40,8 +50,61 @@ jobs:
       - uses: actions/checkout@v3
       - uses: wadackel/files-sync-action@v1
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_FILES_SYNC_TOKEN }}
+          github_token: ${{ secrets.GITHUB_FILES_SYNC_TOKEN }}
 ```
+
+<details>
+<summary>GitHub App Tokens (Standalone)</summary>
+
+```yaml
+name: Sync Files
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: wadackel/files-sync-action@v1
+        with:
+          github_app_id: ${{ secrets.GITHUB_APP_ID }}
+          github_app_installation_id: ${{ secrets.GITHUB_APP_INSTALLATION_ID }}
+          github_app_private_key: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+```
+
+</details>
+
+<details>
+<summary>GitHub App Tokens (with <a href="https://github.com/tibdex/github-app-token">tibdex/github-app-token</a>)</summary>
+
+```yaml
+name: Sync Files
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Generate token
+        id: generate_token
+        uses: tibdex/github-app-token@v1
+        with:
+          app_id: ${{ secrets.GITHUB_APP_ID }}
+          installation_id: ${{ secrets.GITHUB_APP_INSTALLATION_ID }}
+          private_key: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+      - uses: wadackel/files-sync-action@v1
+        with:
+          github_token: ${{ steps.generate_token.outputs.token }}
+```
+
+</details>
 
 `.github/files-sync-config.yml`
 

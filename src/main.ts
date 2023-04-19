@@ -23,8 +23,6 @@ import { createGitHub } from './github.js';
 import { getInputs } from './inputs.js';
 import { convertValidBranchName, dirname, merge } from './utils.js';
 
-const __dirname = dirname(import.meta.url);
-
 const json = (input: unknown) => JSON.stringify(input, null, '  ');
 const info = (key: string, value: string) => core.info(`${key.padStart(21)}: ${value}`);
 
@@ -56,6 +54,8 @@ const getValidInputs = T.tryCatchK(
 );
 
 const run = async (): Promise<number> => {
+  const cwd = process.cwd();
+
   const inputs = getValidInputs();
   if (T.isLeft(inputs)) {
     core.setFailed(inputs.left.message);
@@ -114,7 +114,6 @@ const run = async (): Promise<number> => {
                     exclude: f.exclude ?? defaultFile.exclude,
                   };
 
-            const cwd = path.resolve(__dirname, '..');
             const filepath = path.resolve(cwd, file.from);
             const stat = await fs.stat(filepath);
             let paths: [from: string, to: string][];

@@ -77124,11 +77124,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
         owner: parsed.right[0],
         repo: parsed.right[1],
     };
-    const { data: repo, ...test } = await rest.repos.get(defaults);
-    console.dir({ repo, ...test }, { depth: null });
-    if (true) {
-        throw new Error('test');
-    }
+    const { data: repo } = await rest.repos.get(defaults);
     return {
         owner: defaults.owner,
         name: defaults.repo,
@@ -77386,7 +77382,6 @@ __nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__) => {
 
 
 
-const __dirname = (0,_utils_js__WEBPACK_IMPORTED_MODULE_10__/* .dirname */ .XX)("file:///Users/a14978/develop/github.com/wadackel/file-sync-action/src/main.ts");
 const json = (input) => JSON.stringify(input, null, '  ');
 const info = (key, value) => _actions_core__WEBPACK_IMPORTED_MODULE_2__.info(`${key.padStart(21)}: ${value}`);
 const getValidInputs = fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.tryCatchK(() => {
@@ -77408,6 +77403,7 @@ const getValidInputs = fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.tryCatchK(() =
     return inputs;
 }, (error) => new Error(String(error)));
 const run = async () => {
+    const cwd = process.cwd();
     const inputs = getValidInputs();
     if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.isLeft(inputs)) {
         _actions_core__WEBPACK_IMPORTED_MODULE_2__.setFailed(inputs.left.message);
@@ -77449,7 +77445,6 @@ const run = async () => {
                         ...f,
                         exclude: f.exclude ?? _constants_js__WEBPACK_IMPORTED_MODULE_7__/* .defaultFile.exclude */ .w2.exclude,
                     };
-                const cwd = node_path__WEBPACK_IMPORTED_MODULE_1__.resolve(__dirname, '..');
                 const filepath = node_path__WEBPACK_IMPORTED_MODULE_1__.resolve(cwd, file.from);
                 const stat = await node_fs_promises__WEBPACK_IMPORTED_MODULE_0__.stat(filepath);
                 let paths;
@@ -77680,11 +77675,10 @@ __webpack_handle_async_dependencies__();
 // EXPORTS
 __nccwpck_require__.d(__webpack_exports__, {
   "XH": () => (/* binding */ convertValidBranchName),
-  "XX": () => (/* binding */ dirname),
   "TS": () => (/* binding */ merge)
 });
 
-// UNUSED EXPORTS: filename
+// UNUSED EXPORTS: dirname, filename
 
 // EXTERNAL MODULE: external "node:path"
 var external_node_path_ = __nccwpck_require__(2049);
@@ -78298,8 +78292,8 @@ function mergeOthersInto(m_target, values, utils, meta) {
 /**
  * Modules
  */
-const filename = (url) => (0,external_node_url_namespaceObject.fileURLToPath)(url);
-const dirname = (url) => external_node_path_.dirname(filename(url));
+const filename = (url) => fileURLToPath(url);
+const dirname = (url) => path.dirname(filename(url));
 /**
  * Objects
  */

@@ -21,7 +21,7 @@ import {
 } from './constants.js';
 import { createGitHub } from './github.js';
 import { getInputs } from './inputs.js';
-import { convertValidBranchName, dirname, merge } from './utils.js';
+import { convertValidBranchName, merge } from './utils.js';
 
 const json = (input: unknown) => JSON.stringify(input, null, '  ');
 const info = (key: string, value: string) => core.info(`${key.padStart(21)}: ${value}`);

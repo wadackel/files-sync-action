@@ -1,0 +1,26 @@
+name: 'E2E Testing'
+
+on:
+  push:
+    branches:
+      - main
+      - 'releases/*'
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3.5.0
+
+      - name: Generate token
+        id: generate_token
+        uses: tibdex/github-app-token@b62528385c34dbc9f38e5f4225ac829252d1ea92 # v1.8.0
+        with:
+          app_id: ${{ secrets.GH_APP_E2E_ID }}
+          installation_id: ${{ secrets.GH_APP_E2E_INSTALLATION_ID }}
+          private_key: ${{ secrets.GH_APP_E2E_PRIVATE_KEY }}
+
+      - uses: ./
+        with:
+          github_token: ${{ steps.generate_token.outputs.token }}
+          config_file: '.github/files-sync-e2e-config.yml'

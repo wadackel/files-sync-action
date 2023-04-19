@@ -84,5 +84,5 @@ jobs:
       - run: pnpm i --frozen-lockfile
       - name: Release
         env:
-          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
         run: pnpm release

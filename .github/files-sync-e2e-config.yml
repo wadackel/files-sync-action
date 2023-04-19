@@ -1,0 +1,21 @@
+patterns:
+  - files:
+      - LICENSE
+      - from: .github/fixtures/gitignore
+        to: .gitignore
+      - from: .github/fixtures/README.md
+        to: README.md
+      - from: .github/fixtures/shared
+        to: files
+        exclude:
+          - '*.txt'
+    repositories:
+      - wadackel/files-sync-action-sandbox1
+      - wadackel/files-sync-action-sandbox2
+    template:
+      repository:
+        name: 'wadackel/files-sync-action'
+        url: 'https://github.com/wadackel/files-sync-action'
+    pull_request:
+      labels:
+        - 'test'

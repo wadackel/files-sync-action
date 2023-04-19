@@ -1,4 +1,4 @@
-name: 'files-sync-action'
+name: 'Files Sync'
 description: 'A customizable action that synchronizes files across multiple repositories.'
 author: 'wadackel'
 branding:

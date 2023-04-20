@@ -170,7 +170,7 @@ const run = async (): Promise<number> => {
     for (const name of entry.repositories) {
       core.info('	');
 
-      const id = `patterns.${i}#${name}`;
+      const id = `patterns.${i} ${name}`;
 
       const repository = await github.initializeRepository(name)();
       if (T.isLeft(repository)) {
@@ -235,8 +235,8 @@ const run = async (): Promise<number> => {
         return 1;
       }
       core.debug(`commit: ${json(commit.right)}`);
-      info('Commit', commit.right.sha);
-      info('Commit SHA', commit.right.message);
+      info('Commit SHA', commit.right.sha);
+      info('Commit', `"${commit.right.message}"`);
 
       const diff = await repo.compareCommits(parent, commit.right.sha)();
       if (T.isLeft(diff)) {
@@ -297,7 +297,7 @@ const run = async (): Promise<number> => {
         return 1;
       }
       core.debug(`pull request: ${json(pr)}`);
-      info('Pull Request', `#${pr.right.number} - ${pr.right.html_url}`);
+      info('Pull Request', pr.right.html_url);
 
       // Add labels
       if (cfg.pull_request.labels.length > 0) {

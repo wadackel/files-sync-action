@@ -77488,7 +77488,7 @@ const run = async () => {
         _actions_core__WEBPACK_IMPORTED_MODULE_2__.info(`Synchronize ${files.right.length} files:`);
         for (const name of entry.repositories) {
             _actions_core__WEBPACK_IMPORTED_MODULE_2__.info('	');
-            const id = `patterns.${i}#${name}`;
+            const id = `patterns.${i} ${name}`;
             const repository = await github.initializeRepository(name)();
             if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.isLeft(repository)) {
                 _actions_core__WEBPACK_IMPORTED_MODULE_2__.setFailed(`${id} - Repository initializing error: ${repository.left.message}`);
@@ -77547,8 +77547,8 @@ const run = async () => {
                 return 1;
             }
             _actions_core__WEBPACK_IMPORTED_MODULE_2__.debug(`commit: ${json(commit.right)}`);
-            info('Commit', commit.right.sha);
-            info('Commit SHA', commit.right.message);
+            info('Commit SHA', commit.right.sha);
+            info('Commit', `"${commit.right.message}"`);
             const diff = await repo.compareCommits(parent, commit.right.sha)();
             if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.isLeft(diff)) {
                 _actions_core__WEBPACK_IMPORTED_MODULE_2__.setFailed(`${id} - Compare commits error: ${diff.left.message}`);
@@ -77604,7 +77604,7 @@ const run = async () => {
                 return 1;
             }
             _actions_core__WEBPACK_IMPORTED_MODULE_2__.debug(`pull request: ${json(pr)}`);
-            info('Pull Request', `#${pr.right.number} - ${pr.right.html_url}`);
+            info('Pull Request', pr.right.html_url);
             // Add labels
             if (cfg.pull_request.labels.length > 0) {
                 const res = await repo.addPullRequestLabels(pr.right.number, cfg.pull_request.labels)();

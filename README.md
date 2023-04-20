@@ -13,11 +13,11 @@ A customizable action that synchronizes files across multiple repositories.
 
 `files-sync-action` is a GitHub Action that synchronizes files across multiple repositories based on a configuration file written in YAML. It is useful in cases where you want to unify files, such as various tool configuration files or workflow files, across repositories. There are various patterns for motivation to synchronize files, depending on the team. To support these use cases, it allows for detailed configuration.
 
+<div align="center">
+
 The following links are the actual PR and Workflow execution result logs:
 
-[Actual PR](https://github.com/wadackel/files-sync-action-sandbox1/pull/1) | [Workflow Run Log](https://github.com/wadackel/files-sync-action/actions/runs/4740171900/jobs/8415765398)
-
-<div align="center">
+[Actual PR][demo-pr] | [Workflow Run Log][demo-workflow-log]
 
 ![Screenshot](./assets/screenshot.png)
 
@@ -27,6 +27,7 @@ The following links are the actual PR and Workflow execution result logs:
 
 - :arrows_counterclockwise: Create PRs to synchronize files and directories across multiple repositories
 - :hammer_and_wrench: Support flexible configuration of reviewers and labels for PRs
+- :checkered_flag: Supports stable file synchronization even in large repositories.
 - :robot: Support authentication using GitHub App tokens
 - :pencil: Support file customization using [EJS][ejs]
 
@@ -295,7 +296,7 @@ patterns:
       prefix: 'build'
     pull_request:
       reviewers:
-        - 'team:team_name'
+        - 'team:team_slug'
         - 'login_name'
       labels:
         - 'A-build'
@@ -360,14 +361,14 @@ The following template variables are available for various keys:
 
 ### `PullRequestConfig`
 
-| Key         | Required | Type       | Description                                                                                                                             |
-| :---------- | :------- | :--------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
-| `disabled`  | `false`  | `boolean`  | Flag to disable PR when synchronizing files. If disabled, file synchronization will only push without creating a PR                     |
-| `title`     | `false`  | `string`   | Title of the automatically generated PR. Supports [EJS][ejs] templates                                                                  |
-| `body`      | `false`  | `string`   | Content of the automatically generated PR. Supports [EJS][ejs] templates                                                                |
-| `reviewers` | `false`  | `string[]` | List of reviewers to set for the automatically generated PR. To specify a team as a reviewer, add `team:` as a prefix to the login name |
-| `assignees` | `false`  | `string[]` | List of assignees to set for the automatically generated PR. Team assignment is not supported                                           |
-| `labels`    | `false`  | `string[]` | List of labels to set for the automatically generated PR                                                                                |
+| Key         | Required | Type       | Description                                                                                                                            |
+| :---------- | :------- | :--------- | :------------------------------------------------------------------------------------------------------------------------------------- |
+| `disabled`  | `false`  | `boolean`  | Flag to disable PR when synchronizing files. If disabled, file synchronization will only push without creating a PR                    |
+| `title`     | `false`  | `string`   | Title of the automatically generated PR. Supports [EJS][ejs] templates                                                                 |
+| `body`      | `false`  | `string`   | Content of the automatically generated PR. Supports [EJS][ejs] templates                                                               |
+| `reviewers` | `false`  | `string[]` | List of reviewers to set for the automatically generated PR. To specify a team as a reviewer, add `team:` as a prefix to the team slug |
+| `assignees` | `false`  | `string[]` | List of assignees to set for the automatically generated PR. Team assignment is not supported                                          |
+| `labels`    | `false`  | `string[]` | List of labels to set for the automatically generated PR                                                                               |
 
 The following template variables are available for various keys:
 
@@ -471,6 +472,8 @@ $ pnpm build && node test.js
 [ejs]: https://ejs.co
 [micromatch]: https://github.com/micromatch/micromatch
 [fine-grained-pat]: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token#creating-a-fine-grained-personal-access-token
+[demo-pr]: https://github.com/wadackel/files-sync-action-sandbox1/pull/1
+[demo-workflow-log]: https://github.com/wadackel/files-sync-action/actions/runs/4740171900/jobs/8415765398
 [SettingsConfig]: #settingsconfig
 [PatternConfig]: #patternconfig
 [CommitConfig]: #commitconfig

@@ -2,7 +2,11 @@
 
 # :package: Files Sync Action
 
+<!-- gha-description-start -->
+
 A customizable action that synchronizes files across multiple repositories.
+
+<!-- gha-description-end -->
 
 [![Build][badge-build]][build]
 [![MIT LICENSE][badge-license]][license]
@@ -147,7 +151,7 @@ To use `files-sync-action`, you need to set the following `Repository permission
 
 ## Inputs
 
-<!-- inputs-start -->
+<!-- gha-inputs-start -->
 
 ### `github_token`
 
@@ -191,11 +195,11 @@ API URL of the GitHub server.
 
 The path for the sync configuration file.
 
-<!-- inputs-end -->
+<!-- gha-inputs-end -->
 
 ## Outputs
 
-<!-- outputs-start -->
+<!-- gha-outputs-start -->
 
 ### `pull_request_urls`
 
@@ -205,7 +209,7 @@ URL array of PRs created to synchronize files.
 
 An array of all synchronized file names.
 
-<!-- outputs-end -->
+<!-- gha-outputs-end -->
 
 ## Sync Configuration
 

@@ -55,7 +55,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: wadackel/files-sync-action@v1
         with:
-          github_token: ${{ secrets.GITHUB_FILES_SYNC_TOKEN }}
+          github_token: ${{ secrets.GH_FILES_SYNC_TOKEN }}
 ```
 
 <details>
@@ -101,9 +101,9 @@ jobs:
         id: generate_token
         uses: tibdex/github-app-token@v1
         with:
-          app_id: ${{ secrets.GITHUB_APP_ID }}
-          installation_id: ${{ secrets.GITHUB_APP_INSTALLATION_ID }}
-          private_key: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+          app_id: ${{ secrets.GH_APP_ID }}
+          installation_id: ${{ secrets.GH_APP_INSTALLATION_ID }}
+          private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
       - uses: wadackel/files-sync-action@v1
         with:
           github_token: ${{ steps.generate_token.outputs.token }}
@@ -158,7 +158,8 @@ To use `files-sync-action`, you need to set the following `Repository permission
 **Required:** `false`  
 **Default:** n/a
 
-Personal Access Token to use to create file sync and PR. Required if `GITHUB_APP_*` is not specified.
+Personal Access Token to use to create file sync and PR. Required if `
+_APP_*` is not specified.
 
 ### `github_app_id`
 

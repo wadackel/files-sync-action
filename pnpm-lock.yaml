@@ -76,8 +76,8 @@ devDependencies:
     specifier: ^2.27.5
     version: 2.27.5(@typescript-eslint/parser@5.58.0)(eslint@8.38.0)
   gha-docgen:
-    specifier: ^1.0.0
-    version: 1.0.0
+    specifier: ^1.0.1
+    version: 1.0.1
   husky:
     specifier: ^8.0.0
     version: 8.0.0
@@ -2618,8 +2618,8 @@ packages:
     resolution: {integrity: sha512-MjhiaIWCJ1sAU4pIQ5i5OfOuHHxVo1oYeNsWTON7jxYkod8pHocXeh+SSbmu5OZZZK73B6cbJ2XADzXehLyovQ==}
     dev: true
 
-  /gha-docgen@1.0.0:
-    resolution: {integrity: sha512-M4nccIqaykyYpAIHGTU8o5D0Rj5ao2v+KqX0c2UPS2R2/jUznYgU9s/R8mn8vbPQyTpkBoJx85zCdgJLi3Ls1A==}
+  /gha-docgen@1.0.1:
+    resolution: {integrity: sha512-UrGQWwzlrBXZGwWfnInyQtQAtguNUhfYDVx7qpqZlXac1+Gi5y79IZw+5UKGj7TRD+TYDvVPWXUiyrI8Wp7r3g==}
     hasBin: true
     dependencies:
       debug: 4.3.4
@@ -3730,7 +3730,7 @@ packages:
     dependencies:
       hosted-git-info: 5.2.1
       is-core-module: 2.12.0
-      semver: 7.4.0
+      semver: 7.5.0
       validate-npm-package-license: 3.0.4
     dev: true
 
@@ -4564,6 +4564,14 @@ packages:
     hasBin: true
     dependencies:
       lru-cache: 6.0.0
+
+  /semver@7.5.0:
+    resolution: {integrity: sha512-+XC0AD/R7Q2mPSRuy2Id0+CGTZ98+8f+KvwirxOKIEyid+XSx6HbC63p+O4IndTHuX5Z+JxQ0TghCkO5Cg/2HA==}
+    engines: {node: '>=10'}
+    hasBin: true
+    dependencies:
+      lru-cache: 6.0.0
+    dev: true
 
   /shebang-command@1.2.0:
     resolution: {integrity: sha512-EV3L1+UQWGor21OmnvojK36mhg+TyIKDh3iFBKBohr5xeXIhNBcx8oWdgkTEEQ+BEFFYdLRuqMfd5L84N1V5Vg==}

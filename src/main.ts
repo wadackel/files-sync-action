@@ -26,51 +26,20 @@ import { convertValidBranchName, merge } from './utils.js';
 const json = (input: unknown) => JSON.stringify(input, null, '  ');
 const info = (key: string, value: string) => core.info(`${key.padStart(21)}: ${value}`);
 
-const getValidInputs = T.tryCatchK(
-  () => {
-    const inputs = getInputs();
-
-    if (inputs.github_token === null) {
-      if (
-        inputs.github_app_id === null ||
-        inputs.github_app_installation_id === null ||
-        inputs.github_app_private_key === null
-      ) {
-        throw new Error('"GITHUB_TOKEN" or "GITHUB_APP_*" is required, but not specified in "inputs" field.');
-      }
-    } else {
-      if (
-        inputs.github_app_id !== null ||
-        inputs.github_app_installation_id !== null ||
-        inputs.github_app_private_key !== null
-      ) {
-        throw new Error('If "GITHUB_TOKEN" is specified, "GITHUB_APP_*" cannot be specified.');
-      }
-    }
-
-    return inputs;
-  },
-  (error) => new Error(String(error)),
-);
-
 const run = async (): Promise<number> => {
   const cwd = process.cwd();
 
-  const inputs = getValidInputs();
-  if (T.isLeft(inputs)) {
-    core.setFailed(inputs.left.message);
-    return 1;
-  }
+  const inputs = getInputs();
 
-  const config = await loadConfig(inputs.right.config_file)();
+  const config = await loadConfig(inputs.config_file)();
   if (T.isLeft(config)) {
-    core.setFailed(`Load config error: ${inputs.right.config_file}#${config.left.message}`);
+    core.setFailed(`Load config error: ${inputs.config_file}#${config.left.message}`);
     return 1;
   }
   core.debug(`config: ${json(config.right)}`);
 
   const settings = config.right.settings;
-  const github = createGitHub(inputs.right);
+  const github = createGitHub(inputs);
   const prUrls = new Set<string>();
   const syncedFiles = new Set<string>();
 

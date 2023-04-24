@@ -2,19 +2,13 @@
 import * as core from '@actions/core';
 
 const keys: [key: string, required: boolean][] = [
-  ['github_token', false],
-  ['github_app_id', false],
-  ['github_app_installation_id', false],
-  ['github_app_private_key', false],
+  ['github_token', true],
   ['github_api_url', true],
   ['config_file', true],
 ];
 
 export type Inputs = {
-  github_token: string | null;
-  github_app_id: string | null;
-  github_app_installation_id: string | null;
-  github_app_private_key: string | null;
+  github_token: string;
   github_api_url: string;
   config_file: string;
 };

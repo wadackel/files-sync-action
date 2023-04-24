@@ -1,8 +1,6 @@
-import { createAppAuth } from '@octokit/auth-app';
 import * as T from 'fp-ts/Either';
 import * as TE from 'fp-ts/TaskEither';
-import { Octokit } from 'octokit';
-import isBase64 from 'is-base64';
+import { getOctokit } from '@actions/github';
 import type { Inputs } from './inputs.js';
 
 const handleErrorReason = (reason: unknown) => new Error(String(reason));
@@ -80,7 +78,7 @@ export type GitHubRepository = {
 };
 
 type CreateGitHubRepositoryParams = {
-  rest: Octokit['rest'];
+  rest: ReturnType<typeof getOctokit>['rest'];
   name: string;
 };
 
@@ -274,25 +272,9 @@ export type GitHub = {
 };
 
 export const createGitHub = (inputs: Inputs): GitHub => {
-  const octokit =
-    inputs.github_token !== null
-      ? new Octokit({
-          auth: inputs.github_token,
-          baseUrl: inputs.github_api_url,
-        })
-      : new Octokit({
-          authStrategy: createAppAuth,
-          auth: {
-            appId: inputs.github_app_id!,
-            installationId: inputs.github_app_installation_id!,
-            privateKey: isBase64(inputs.github_app_private_key!)
-              ? Buffer.from(inputs.github_app_private_key!, 'base64').toString('utf8')
-              : inputs.github_app_private_key!,
-          },
-          baseUrl: inputs.github_api_url,
-        });
-
-  const { rest } = octokit;
+  const { rest } = getOctokit(inputs.github_token, {
+    baseUrl: inputs.github_api_url,
+  });
 
   return {
     initializeRepository: TE.tryCatchK(async (name) => {

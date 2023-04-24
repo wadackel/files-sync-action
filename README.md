@@ -32,7 +32,6 @@ The following links are the actual PR and Workflow execution result logs:
 - :arrows_counterclockwise: Create PRs to synchronize files and directories across multiple repositories
 - :hammer_and_wrench: Support flexible configuration of reviewers and labels for PRs
 - :checkered_flag: Supports stable file synchronization even in large repositories.
-- :robot: Support authentication using GitHub App tokens
 - :pencil: Support file customization using [EJS][ejs]
 
 ## Usage
@@ -53,34 +52,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: wadackel/files-sync-action@v1
+      - uses: wadackel/files-sync-action@v2
         with:
           github_token: ${{ secrets.GH_FILES_SYNC_TOKEN }}
 ```
-
-<details>
-<summary>GitHub App Tokens (Standalone)</summary>
-
-```yaml
-name: Sync Files
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: wadackel/files-sync-action@v1
-        with:
-          github_app_id: ${{ secrets.GITHUB_APP_ID }}
-          github_app_installation_id: ${{ secrets.GITHUB_APP_INSTALLATION_ID }}
-          github_app_private_key: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
-```
-
-</details>
 
 <details>
 <summary>GitHub App Tokens (with <a href="https://github.com/tibdex/github-app-token">tibdex/github-app-token</a>)</summary>
@@ -104,7 +79,7 @@ jobs:
           app_id: ${{ secrets.GH_APP_ID }}
           installation_id: ${{ secrets.GH_APP_INSTALLATION_ID }}
           private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-      - uses: wadackel/files-sync-action@v1
+      - uses: wadackel/files-sync-action@v2
         with:
           github_token: ${{ steps.generate_token.outputs.token }}
 ```
@@ -155,32 +130,10 @@ To use `files-sync-action`, you need to set the following `Repository permission
 
 ### `github_token`
 
-**Required:** `false`  
+**Required:** `true`  
 **Default:** n/a
 
-Personal Access Token to use to create file sync and PR. Required if `
-_APP_*` is not specified.
-
-### `github_app_id`
-
-**Required:** `false`  
-**Default:** n/a
-
-The ID of the GitHub App. Required if `GITHUB_TOKEN` is not specified.
-
-### `github_app_installation_id`
-
-**Required:** `false`  
-**Default:** n/a
-
-The ID of the GitHub App installation for which the token will be requested. Required if `GITHUB_TOKEN` is not specified.
-
-### `github_app_private_key`
-
-**Required:** `false`  
-**Default:** n/a
-
-The private key of your GitHub app (Base64 encoded or raw string supported). Required if `GITHUB_TOKEN` is not specified.
+Personal Access Token to use to create file sync and PR. Required if `GITHUB_APP_*` is not specified.
 
 ### `github_api_url`
 

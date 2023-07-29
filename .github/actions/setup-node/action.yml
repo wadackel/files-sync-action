@@ -3,7 +3,7 @@ name: setup-node
 runs:
   using: composite
   steps:
-    - uses: pnpm/action-setup@v2.2.4
+    - uses: pnpm/action-setup@v2.4.0
     - uses: actions/setup-node@v3.6.0
       with:
         node-version-file: '.node-version'

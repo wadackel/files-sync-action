@@ -13,7 +13,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3.5.2
       - uses: ./.github/actions/setup-node
@@ -28,28 +28,28 @@ jobs:
           fi
 
   typecheck:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3.5.2
       - uses: ./.github/actions/setup-node
       - run: pnpm typecheck
 
   test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3.5.2
       - uses: ./.github/actions/setup-node
       - run: pnpm test
 
   lint:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3.5.2
       - uses: ./.github/actions/setup-node
       - run: pnpm lint
 
   generate:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3.5.2
       - uses: ./.github/actions/setup-node
@@ -57,7 +57,7 @@ jobs:
       - run: git diff --exit-code || exit 1
 
   pass:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs:
       - build
       - typecheck
@@ -68,7 +68,7 @@ jobs:
       - run: exit 0
 
   publish:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     if: github.ref == 'refs/heads/main'
     needs:
       - pass

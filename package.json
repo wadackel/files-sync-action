@@ -95,7 +95,7 @@
     "@types/ejs": "3.1.2",
     "@types/is-base64": "1.1.1",
     "@types/micromatch": "4.0.2",
-    "@types/node": "18.16.0",
+    "@types/node": "18.17.5",
     "@typescript-eslint/eslint-plugin": "5.60.0",
     "@typescript-eslint/parser": "5.60.0",
     "@vercel/ncc": "0.31.1",

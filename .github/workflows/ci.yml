@@ -15,7 +15,7 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v3.6.0
       - uses: ./.github/actions/setup-node
       - run: pnpm build
       - name: Compare the expected and actual dist/ directories
@@ -30,28 +30,28 @@ jobs:
   typecheck:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v3.6.0
       - uses: ./.github/actions/setup-node
       - run: pnpm typecheck
 
   test:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v3.6.0
       - uses: ./.github/actions/setup-node
       - run: pnpm test
 
   lint:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v3.6.0
       - uses: ./.github/actions/setup-node
       - run: pnpm lint
 
   generate:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v3.6.0
       - uses: ./.github/actions/setup-node
       - run: pnpm generate
       - run: git diff --exit-code || exit 1
@@ -73,7 +73,7 @@ jobs:
     needs:
       - pass
     steps:
-      - uses: actions/checkout@v3.5.3
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
           persist-credentials: false

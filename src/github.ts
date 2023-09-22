@@ -37,8 +37,11 @@ export type Commit = {
   sha: string;
 };
 
+export type CommitFileMode = '100644' | '100755' | '040000' | '160000' | '120000';
+
 export type CommitFile = {
   path: string;
+  mode: CommitFileMode;
   content: string;
 };
 
@@ -151,7 +154,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
           ...defaults,
           base_tree: parent,
           tree: files.map((file) => ({
-            mode: '100644',
+            mode: file.mode,
             path: file.path,
             content: file.content,
           })),

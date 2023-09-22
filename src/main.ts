@@ -106,13 +106,17 @@ const run = async (): Promise<number> => {
 
             return await Promise.all(
               paths.map(async ([from, to]) => {
-                const raw = await fs.readFile(path.join(cwd, from), 'utf8');
+                const fpath = path.join(cwd, from);
+                const raw = await fs.readFile(fpath, 'utf8');
+                const stat = await fs.stat(fpath);
+                const mode = (stat.mode & fs.constants.S_IXUSR) !== 0 ? '100755' : '100644';
                 const content = entry.template !== undefined ? render(raw, entry.template) : raw;
                 return {
                   from,
                   to,
+                  mode,
                   content,
-                };
+                } as const;
               }),
             );
           },
@@ -196,6 +200,7 @@ const run = async (): Promise<number> => {
         }),
         files: files.right.map((file) => ({
           path: file.to,
+          mode: file.mode,
           content: file.content,
         })),
       })();

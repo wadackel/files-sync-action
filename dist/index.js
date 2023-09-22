@@ -49843,7 +49843,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                 ...defaults,
                 base_tree: parent,
                 tree: files.map((file) => ({
-                    mode: '100644',
+                    mode: file.mode,
                     path: file.path,
                     content: file.content,
                 })),
@@ -50097,11 +50097,15 @@ const run = async () => {
                     }
                 }
                 return await Promise.all(paths.map(async ([from, to]) => {
-                    const raw = await node_fs_promises__WEBPACK_IMPORTED_MODULE_0__.readFile(node_path__WEBPACK_IMPORTED_MODULE_1__.join(cwd, from), 'utf8');
+                    const fpath = node_path__WEBPACK_IMPORTED_MODULE_1__.join(cwd, from);
+                    const raw = await node_fs_promises__WEBPACK_IMPORTED_MODULE_0__.readFile(fpath, 'utf8');
+                    const stat = await node_fs_promises__WEBPACK_IMPORTED_MODULE_0__.stat(fpath);
+                    const mode = (stat.mode & node_fs_promises__WEBPACK_IMPORTED_MODULE_0__.constants.S_IXUSR) !== 0 ? '100755' : '100644';
                     const content = entry.template !== undefined ? (0,ejs__WEBPACK_IMPORTED_MODULE_3__.render)(raw, entry.template) : raw;
                     return {
                         from,
                         to,
+                        mode,
                         content,
                     };
                 }));
@@ -50170,6 +50174,7 @@ const run = async () => {
                 }),
                 files: files.right.map((file) => ({
                     path: file.to,
+                    mode: file.mode,
                     content: file.content,
                 })),
             })();

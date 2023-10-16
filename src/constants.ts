@@ -27,6 +27,7 @@ export const defaultEntryConfig = {
   },
   pull_request: {
     disabled: false,
+    override: true,
     title: 'Sync files with `<%- repository %>`',
     body: `
 This PR contains the following updates:

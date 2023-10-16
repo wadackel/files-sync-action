@@ -19,6 +19,7 @@ import {
   defaultEntryConfig,
   defaultFile,
 } from './constants.js';
+import type { PullRequest } from './github.js';
 import { createGitHub } from './github.js';
 import { getInputs } from './inputs.js';
 import { convertValidBranchName, merge } from './utils.js';
@@ -153,7 +154,7 @@ const run = async (): Promise<number> => {
 
       const repo = repository.right;
 
-      const branch = render(cfg.branch.format, {
+      let branch = render(cfg.branch.format, {
         prefix: cfg.branch.prefix,
         repository: convertValidBranchName(GH_REPOSITORY),
         index: i,
@@ -163,18 +164,49 @@ const run = async (): Promise<number> => {
       info('Branch', branch);
 
       // Find existing PR
-      const existingPr = await repo.findExistingPullRequestByBranch(branch)();
+      let existingPr = await repo.findExistingPullRequestByBranch(branch)();
       if (T.isLeft(existingPr)) {
         core.setFailed(`${id} - Find existing pull request error: ${existingPr.left.message}`);
         return 1;
       }
       core.debug(`existing pull request: ${json(existingPr.right)}`);
 
+      // Find existing PR recursively
+      if (existingPr.right !== null && !cfg.pull_request.override) {
+        let tmpBranch = branch;
+        let tmpPr: PullRequest | null = existingPr.right;
+
+        do {
+          const b: string = `${tmpBranch}-${tmpPr.head.sha.slice(0, 7)}`;
+          const pr = await repo.findExistingPullRequestByBranch(b)();
+          if (T.isLeft(pr)) {
+            break;
+          }
+          if (pr.right !== null) {
+            existingPr = pr;
+            branch = b;
+          }
+          tmpPr = pr.right;
+          tmpBranch = b;
+        } while (tmpPr !== null);
+      }
+
       // Get parent SHA
       let parent: string;
+      let base: string | null = null;
       if (existingPr.right !== null) {
-        parent = existingPr.right.base.sha;
         info('Existing Pull Request', existingPr.right.html_url);
+        if (!cfg.pull_request.override) {
+          // Create branch from from existing PR's branch
+          base = branch;
+          branch = `${branch}-${existingPr.right.head.sha.slice(0, 7)}`;
+          const b = await repo.createBranch(branch, base)();
+          if (T.isLeft(b)) {
+            core.setFailed(`${id} - Create branch error: ${b.left.message}`);
+            return 1;
+          }
+        }
+        parent = existingPr.right.head.sha;
       } else {
         const b = await repo.createBranch(branch)();
         if (T.isLeft(b)) {
@@ -188,7 +220,7 @@ const run = async (): Promise<number> => {
       // Commit files
       const commit = await repo.commit({
         parent,
-        branch,
+        branch: branch,
         message: render(cfg.commit.format, {
           prefix: cfg.commit.prefix,
           subject: render(cfg.commit.subject, {
@@ -243,8 +275,9 @@ const run = async (): Promise<number> => {
       }
 
       // Create Pull Request
+      const prNumber = cfg.pull_request.override ? existingPr.right?.number ?? null : null;
       const pr = await repo.createOrUpdatePullRequest({
-        number: existingPr.right?.number ?? null,
+        number: prNumber,
         title: render(cfg.pull_request.title, {
           repository: GH_REPOSITORY,
           index: i,
@@ -265,6 +298,7 @@ const run = async (): Promise<number> => {
           index: i,
         }),
         branch,
+        base,
       })();
       if (T.isLeft(pr)) {
         core.setFailed(`${id} - Create(Update) pull request error: ${pr.left.message}`);

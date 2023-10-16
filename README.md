@@ -229,6 +229,7 @@ settings:
     prefix: 'files-sync'
   pull_request:
     disabled: false
+    override: true
     title: 'Sync files with `<%- repository %>`'
     body: |
       This PR contains the following updates:
@@ -350,6 +351,7 @@ The following template variables are available for various keys:
 | Key         | Required | Type       | Description                                                                                                                            |
 | :---------- | :------- | :--------- | :------------------------------------------------------------------------------------------------------------------------------------- |
 | `disabled`  | `false`  | `boolean`  | Flag to disable PR when synchronizing files. If disabled, file synchronization will only push without creating a PR                    |
+| `override`  | `false`  | `boolean`  | Flag to override PR when not merged PR exists. If disabled, another PR will create from head ref of not merged PR                      |
 | `title`     | `false`  | `string`   | Title of the automatically generated PR. Supports [EJS][ejs] templates                                                                 |
 | `body`      | `false`  | `string`   | Content of the automatically generated PR. Supports [EJS][ejs] templates                                                               |
 | `reviewers` | `false`  | `string[]` | List of reviewers to set for the automatically generated PR. To specify a team as a reviewer, add `team:` as a prefix to the team slug |

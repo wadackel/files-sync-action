@@ -21,6 +21,9 @@ export type Repository = {
 
 export type PullRequest = {
   number: number;
+  head: {
+    sha: string;
+  };
   base: {
     sha: string;
   };
@@ -61,12 +64,13 @@ export type GitHubRepositoryCreateOrUpdatePullRequestParams = {
   body: string;
   number?: number | null;
   branch: string;
+  base?: string | null;
 };
 
 export type GitHubRepository = {
   owner: string;
   name: string;
-  createBranch: (name: string) => TE.TaskEither<Error, Branch>;
+  createBranch: (name: string, base?: string | null) => TE.TaskEither<Error, Branch>;
   deleteBranch: (name: string) => TE.TaskEither<Error, void>;
   commit: (params: GitHubRepositoryCommitParams) => TE.TaskEither<Error, Commit>;
   compareCommits: (base: string, head: string) => TE.TaskEither<Error, CommitDiffEntry[]>;
@@ -103,11 +107,15 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
       owner: defaults.owner,
       name: defaults.repo,
 
-      createBranch: TE.tryCatchK(async (name) => {
+      createBranch: TE.tryCatchK(async (name, base) => {
+        if (base === null || base === undefined) {
+          base = repo.default_branch;
+        }
+
         // get base branch
-        const { data: base } = await rest.git.getRef({
+        const { data: baseRef } = await rest.git.getRef({
           ...defaults,
-          ref: `heads/${repo.default_branch}`,
+          ref: `heads/${base}`,
         });
 
         // update exisiting branch
@@ -115,7 +123,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
           const { data } = await rest.git.updateRef({
             ...defaults,
             ref: `heads/${name}`,
-            sha: base.object.sha,
+            sha: baseRef.object.sha,
             force: true,
           });
           return data;
@@ -132,7 +140,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
         const { data: ref } = await rest.git.createRef({
           ...defaults,
           ref: `refs/heads/${name}`,
-          sha: base.object.sha,
+          sha: baseRef.object.sha,
         });
 
         return {
@@ -207,7 +215,11 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
         });
       }, handleErrorReason),
 
-      createOrUpdatePullRequest: TE.tryCatchK(async ({ title, body, number, branch }) => {
+      createOrUpdatePullRequest: TE.tryCatchK(async ({ title, body, number, branch, base }) => {
+        if (base === null || base === undefined) {
+          base = repo.default_branch;
+        }
+
         if (number !== null && number !== undefined) {
           const { data } = await rest.pulls.update({
             ...defaults,
@@ -219,7 +231,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
         } else {
           const { data } = await rest.pulls.create({
             ...defaults,
-            base: repo.default_branch,
+            base: base,
             head: branch,
             title,
             body,

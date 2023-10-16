@@ -49630,6 +49630,7 @@ const branchConfigSchema = z.object({
     .partial();
 const pullRequestConfigSchema = z.object({
     disabled: z.boolean(),
+    override: z.boolean(),
     title: z.string(),
     body: z.string(),
     reviewers: z.array(z.string()),
@@ -49732,6 +49733,7 @@ const defaultEntryConfig = {
     },
     pull_request: {
         disabled: false,
+        override: true,
         title: 'Sync files with `<%- repository %>`',
         body: `
 This PR contains the following updates:
@@ -49798,18 +49800,21 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
     return {
         owner: defaults.owner,
         name: defaults.repo,
-        createBranch: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (name) => {
+        createBranch: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (name, base) => {
+            if (base === null || base === undefined) {
+                base = repo.default_branch;
+            }
             // get base branch
-            const { data: base } = await rest.git.getRef({
+            const { data: baseRef } = await rest.git.getRef({
                 ...defaults,
-                ref: `heads/${repo.default_branch}`,
+                ref: `heads/${base}`,
             });
             // update exisiting branch
             const updated = await fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatch(async () => {
                 const { data } = await rest.git.updateRef({
                     ...defaults,
                     ref: `heads/${name}`,
-                    sha: base.object.sha,
+                    sha: baseRef.object.sha,
                     force: true,
                 });
                 return data;
@@ -49824,7 +49829,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
             const { data: ref } = await rest.git.createRef({
                 ...defaults,
                 ref: `refs/heads/${name}`,
-                sha: base.object.sha,
+                sha: baseRef.object.sha,
             });
             return {
                 name,
@@ -49887,7 +49892,10 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                 state: 'closed',
             });
         }, handleErrorReason),
-        createOrUpdatePullRequest: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async ({ title, body, number, branch }) => {
+        createOrUpdatePullRequest: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async ({ title, body, number, branch, base }) => {
+            if (base === null || base === undefined) {
+                base = repo.default_branch;
+            }
             if (number !== null && number !== undefined) {
                 const { data } = await rest.pulls.update({
                     ...defaults,
@@ -49900,7 +49908,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
             else {
                 const { data } = await rest.pulls.create({
                     ...defaults,
-                    base: repo.default_branch,
+                    base: base,
                     head: branch,
                     title,
                     body,
@@ -50130,7 +50138,7 @@ const run = async () => {
                 return 1;
             }
             const repo = repository.right;
-            const branch = (0,ejs__WEBPACK_IMPORTED_MODULE_3__.render)(cfg.branch.format, {
+            let branch = (0,ejs__WEBPACK_IMPORTED_MODULE_3__.render)(cfg.branch.format, {
                 prefix: cfg.branch.prefix,
                 repository: (0,_utils_js__WEBPACK_IMPORTED_MODULE_10__/* .convertValidBranchName */ .XH)(_constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_REPOSITORY */ .Xf),
                 index: i,
@@ -50138,17 +50146,46 @@ const run = async () => {
             info('Repository', name);
             info('Branch', branch);
             // Find existing PR
-            const existingPr = await repo.findExistingPullRequestByBranch(branch)();
+            let existingPr = await repo.findExistingPullRequestByBranch(branch)();
             if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.isLeft(existingPr)) {
                 _actions_core__WEBPACK_IMPORTED_MODULE_2__.setFailed(`${id} - Find existing pull request error: ${existingPr.left.message}`);
                 return 1;
             }
             _actions_core__WEBPACK_IMPORTED_MODULE_2__.debug(`existing pull request: ${json(existingPr.right)}`);
+            // Find existing PR recursively
+            if (existingPr.right !== null && !cfg.pull_request.override) {
+                let tmpBranch = branch;
+                let tmpPr = existingPr.right;
+                do {
+                    const b = `${tmpBranch}-${tmpPr.head.sha.slice(0, 7)}`;
+                    const pr = await repo.findExistingPullRequestByBranch(b)();
+                    if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.isLeft(pr)) {
+                        break;
+                    }
+                    if (pr.right !== null) {
+                        existingPr = pr;
+                        branch = b;
+                    }
+                    tmpPr = pr.right;
+                    tmpBranch = b;
+                } while (tmpPr !== null);
+            }
             // Get parent SHA
             let parent;
+            let base = null;
             if (existingPr.right !== null) {
-                parent = existingPr.right.base.sha;
                 info('Existing Pull Request', existingPr.right.html_url);
+                if (!cfg.pull_request.override) {
+                    // Create branch from from existing PR's branch
+                    base = branch;
+                    branch = `${branch}-${existingPr.right.head.sha.slice(0, 7)}`;
+                    const b = await repo.createBranch(branch, base)();
+                    if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.isLeft(b)) {
+                        _actions_core__WEBPACK_IMPORTED_MODULE_2__.setFailed(`${id} - Create branch error: ${b.left.message}`);
+                        return 1;
+                    }
+                }
+                parent = existingPr.right.head.sha;
             }
             else {
                 const b = await repo.createBranch(branch)();
@@ -50162,7 +50199,7 @@ const run = async () => {
             // Commit files
             const commit = await repo.commit({
                 parent,
-                branch,
+                branch: branch,
                 message: (0,ejs__WEBPACK_IMPORTED_MODULE_3__.render)(cfg.commit.format, {
                     prefix: cfg.commit.prefix,
                     subject: (0,ejs__WEBPACK_IMPORTED_MODULE_3__.render)(cfg.commit.subject, {
@@ -50212,8 +50249,9 @@ const run = async () => {
                 continue;
             }
             // Create Pull Request
+            const prNumber = cfg.pull_request.override ? existingPr.right?.number ?? null : null;
             const pr = await repo.createOrUpdatePullRequest({
-                number: existingPr.right?.number ?? null,
+                number: prNumber,
                 title: (0,ejs__WEBPACK_IMPORTED_MODULE_3__.render)(cfg.pull_request.title, {
                     repository: _constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_REPOSITORY */ .Xf,
                     index: i,
@@ -50234,6 +50272,7 @@ const run = async () => {
                     index: i,
                 }),
                 branch,
+                base,
             })();
             if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.isLeft(pr)) {
                 _actions_core__WEBPACK_IMPORTED_MODULE_2__.setFailed(`${id} - Create(Update) pull request error: ${pr.left.message}`);

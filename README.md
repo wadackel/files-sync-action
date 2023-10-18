@@ -347,14 +347,15 @@ The following template variables are available for various keys:
 
 ### `PullRequestConfig`
 
-| Key         | Required | Type       | Description                                                                                                                            |
-| :---------- | :------- | :--------- | :------------------------------------------------------------------------------------------------------------------------------------- |
-| `disabled`  | `false`  | `boolean`  | Flag to disable PR when synchronizing files. If disabled, file synchronization will only push without creating a PR                    |
-| `title`     | `false`  | `string`   | Title of the automatically generated PR. Supports [EJS][ejs] templates                                                                 |
-| `body`      | `false`  | `string`   | Content of the automatically generated PR. Supports [EJS][ejs] templates                                                               |
-| `reviewers` | `false`  | `string[]` | List of reviewers to set for the automatically generated PR. To specify a team as a reviewer, add `team:` as a prefix to the team slug |
-| `assignees` | `false`  | `string[]` | List of assignees to set for the automatically generated PR. Team assignment is not supported                                          |
-| `labels`    | `false`  | `string[]` | List of labels to set for the automatically generated PR                                                                               |
+| Key         | Required | Type       | Description                                                                                                                                                                                 |
+| :---------- | :------- | :--------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `disabled`  | `false`  | `boolean`  | Flag to disable PR when synchronizing files. If disabled, file synchronization will only push without creating a PR                                                                         |
+| `force`     | `false`  | `boolean`  | Flag to create a commit from **base** of existing PR and override existing commits. If disabled, the commit is created from **head** of existing PR and existing commits are not overridden |
+| `title`     | `false`  | `string`   | Title of the automatically generated PR. Supports [EJS][ejs] templates                                                                                                                      |
+| `body`      | `false`  | `string`   | Content of the automatically generated PR. Supports [EJS][ejs] templates                                                                                                                    |
+| `reviewers` | `false`  | `string[]` | List of reviewers to set for the automatically generated PR. To specify a team as a reviewer, add `team:` as a prefix to the team slug                                                      |
+| `assignees` | `false`  | `string[]` | List of assignees to set for the automatically generated PR. Team assignment is not supported                                                                                               |
+| `labels`    | `false`  | `string[]` | List of labels to set for the automatically generated PR                                                                                                                                    |
 
 The following template variables are available for various keys:
 

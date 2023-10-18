@@ -173,7 +173,11 @@ const run = async (): Promise<number> => {
       // Get parent SHA
       let parent: string;
       if (existingPr.right !== null) {
-        parent = existingPr.right.base.sha;
+        if (cfg.pull_request.force) {
+          parent = existingPr.right.base.sha;
+        } else {
+          parent = existingPr.right.head.sha;
+        }
         info('Existing Pull Request', existingPr.right.html_url);
       } else {
         const b = await repo.createBranch(branch)();
@@ -203,6 +207,7 @@ const run = async (): Promise<number> => {
           mode: file.mode,
           content: file.content,
         })),
+        force: cfg.pull_request.force,
       })();
       if (T.isLeft(commit)) {
         core.setFailed(`${id} - ${commit.left.message}`);

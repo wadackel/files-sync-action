@@ -49630,6 +49630,7 @@ const branchConfigSchema = z.object({
     .partial();
 const pullRequestConfigSchema = z.object({
     disabled: z.boolean(),
+    force: z.boolean(),
     title: z.string(),
     body: z.string(),
     reviewers: z.array(z.string()),
@@ -49732,6 +49733,7 @@ const defaultEntryConfig = {
     },
     pull_request: {
         disabled: false,
+        force: true,
         title: 'Sync files with `<%- repository %>`',
         body: `
 This PR contains the following updates:
@@ -49837,7 +49839,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                 ref: `heads/${name}`,
             });
         }, handleErrorReason),
-        commit: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async ({ parent, branch, files, message }) => {
+        commit: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async ({ parent, branch, files, message, force }) => {
             // create tree
             const { data: tree } = await rest.git.createTree({
                 ...defaults,
@@ -49860,7 +49862,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                 ...defaults,
                 ref: `heads/${branch}`,
                 sha: commit.sha,
-                force: true,
+                force,
             });
             return commit;
         }, handleErrorReason),
@@ -50147,7 +50149,12 @@ const run = async () => {
             // Get parent SHA
             let parent;
             if (existingPr.right !== null) {
-                parent = existingPr.right.base.sha;
+                if (cfg.pull_request.force) {
+                    parent = existingPr.right.base.sha;
+                }
+                else {
+                    parent = existingPr.right.head.sha;
+                }
                 info('Existing Pull Request', existingPr.right.html_url);
             }
             else {
@@ -50177,6 +50184,7 @@ const run = async () => {
                     mode: file.mode,
                     content: file.content,
                 })),
+                force: cfg.pull_request.force,
             })();
             if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.isLeft(commit)) {
                 _actions_core__WEBPACK_IMPORTED_MODULE_2__.setFailed(`${id} - ${commit.left.message}`);

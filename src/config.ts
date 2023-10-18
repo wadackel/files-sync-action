@@ -25,6 +25,7 @@ export type BranchConfig = z.infer<typeof branchConfigSchema>;
 export const pullRequestConfigSchema = z
   .object({
     disabled: z.boolean(),
+    force: z.boolean(),
     title: z.string(),
     body: z.string(),
     reviewers: z.array(z.string()),

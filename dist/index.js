@@ -49862,7 +49862,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                 ...defaults,
                 ref: `heads/${branch}`,
                 sha: commit.sha,
-                force: force,
+                force,
             });
             return commit;
         }, handleErrorReason),

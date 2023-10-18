@@ -177,7 +177,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
           ...defaults,
           ref: `heads/${branch}`,
           sha: commit.sha,
-          force: force,
+          force,
         });
 
         return commit;

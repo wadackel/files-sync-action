@@ -57,6 +57,7 @@ export type GitHubRepositoryCommitParams = {
   branch: string;
   files: CommitFile[];
   message: string;
+  force: boolean;
 };
 
 export type GitHubRepositoryCreateOrUpdatePullRequestParams = {
@@ -151,7 +152,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
         });
       }, handleErrorReason),
 
-      commit: TE.tryCatchK(async ({ parent, branch, files, message }) => {
+      commit: TE.tryCatchK(async ({ parent, branch, files, message, force }) => {
         // create tree
         const { data: tree } = await rest.git.createTree({
           ...defaults,
@@ -176,7 +177,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
           ...defaults,
           ref: `heads/${branch}`,
           sha: commit.sha,
-          force: false,
+          force: force,
         });
 
         return commit;

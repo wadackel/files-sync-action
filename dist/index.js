@@ -49860,7 +49860,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                 ...defaults,
                 ref: `heads/${branch}`,
                 sha: commit.sha,
-                force: true,
+                force: false,
             });
             return commit;
         }, handleErrorReason),
@@ -50147,7 +50147,7 @@ const run = async () => {
             // Get parent SHA
             let parent;
             if (existingPr.right !== null) {
-                parent = existingPr.right.base.sha;
+                parent = existingPr.right.head.sha;
                 info('Existing Pull Request', existingPr.right.html_url);
             }
             else {

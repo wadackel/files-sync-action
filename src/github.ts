@@ -24,6 +24,9 @@ export type PullRequest = {
   base: {
     sha: string;
   };
+  head: {
+    sha: string;
+  };
   html_url: string;
 };
 
@@ -173,7 +176,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
           ...defaults,
           ref: `heads/${branch}`,
           sha: commit.sha,
-          force: true,
+          force: false,
         });
 
         return commit;

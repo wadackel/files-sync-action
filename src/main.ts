@@ -173,7 +173,7 @@ const run = async (): Promise<number> => {
       // Get parent SHA
       let parent: string;
       if (existingPr.right !== null) {
-        parent = existingPr.right.base.sha;
+        parent = existingPr.right.head.sha;
         info('Existing Pull Request', existingPr.right.html_url);
       } else {
         const b = await repo.createBranch(branch)();

@@ -217,7 +217,10 @@ const run = async (): Promise<number> => {
       info('Commit SHA', commit.right.sha);
       info('Commit', `"${commit.right.message}"`);
 
-      const diff = await repo.compareCommits(parent, commit.right.sha)();
+      const diff = await repo.compareCommits(
+        existingPr.right !== null ? existingPr.right.base.sha : parent,
+        commit.right.sha,
+      )();
       if (T.isLeft(diff)) {
         core.setFailed(`${id} - Compare commits error: ${diff.left.message}`);
         return 1;

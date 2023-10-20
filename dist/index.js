@@ -50193,7 +50193,7 @@ const run = async () => {
             _actions_core__WEBPACK_IMPORTED_MODULE_2__.debug(`commit: ${json(commit.right)}`);
             info('Commit SHA', commit.right.sha);
             info('Commit', `"${commit.right.message}"`);
-            const diff = await repo.compareCommits(parent, commit.right.sha)();
+            const diff = await repo.compareCommits(existingPr.right !== null ? existingPr.right.base.sha : parent, commit.right.sha)();
             if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.isLeft(diff)) {
                 _actions_core__WEBPACK_IMPORTED_MODULE_2__.setFailed(`${id} - Compare commits error: ${diff.left.message}`);
                 return 1;

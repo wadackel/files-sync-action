@@ -47,8 +47,8 @@ devDependencies:
     specifier: 3.1.4
     version: 3.1.4
   '@types/is-base64':
-    specifier: 1.1.1
-    version: 1.1.1
+    specifier: 1.1.3
+    version: 1.1.3
   '@types/micromatch':
     specifier: 4.0.3
     version: 4.0.3
@@ -1225,8 +1225,8 @@ packages:
     resolution: {integrity: sha512-fnM/NjByiWdSRJRrmGxgqOSAnmOnsvX1QcNYk5TVyIIj+7ZqOKMb9gQa4OIl/lil2w/8TiTWV+nz3q8yqxez/w==}
     dev: true
 
-  /@types/is-base64@1.1.1:
-    resolution: {integrity: sha512-JgnGhP+MeSHEQmvxcobcwPEP4Ew56voiq9/0hmP/41lyQ/3gBw/ZCIRy2v+QkEOdeCl58lRcrf6+Y6WMlJGETA==}
+  /@types/is-base64@1.1.3:
+    resolution: {integrity: sha512-8h40c+MFeMKhEw8Ebckd11MEt9sngs4AAkvcZVfDYOFDd7FeTD80pTfm3uvepbWcld1zVkHW+WA6b7UaHAOU/w==}
     dev: true
 
   /@types/json-schema@7.0.12:

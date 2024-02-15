@@ -77,7 +77,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/action-setup@v2.4.0
+      - uses: pnpm/action-setup@v3.0.0
       # Ignore the value of `.node-version` because semantic-release expects v18.x.
       - uses: actions/setup-node@v3.8.1
         with:

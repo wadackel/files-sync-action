@@ -104,8 +104,8 @@ devDependencies:
     specifier: 4.7.1
     version: 4.7.1
   type-fest:
-    specifier: 3.13.1
-    version: 3.13.1
+    specifier: 4.13.1
+    version: 4.13.1
   typescript:
     specifier: 5.4.2
     version: 5.4.2
@@ -5414,6 +5414,11 @@ packages:
   /type-fest@3.13.1:
     resolution: {integrity: sha512-tLq3bSNx+xSpwvAJnzrK0Ep5CLNWjvFTOp71URMaAEWBfRb9nnJiBoUe0tF8bI4ZFO3omgBR6NvnbzVUT3Ly4g==}
     engines: {node: '>=14.16'}
+    dev: true
+
+  /type-fest@4.13.1:
+    resolution: {integrity: sha512-ASMgM+Vf2cLwDMt1KXSkMUDSYCxtckDJs8zsaVF/mYteIsiARKCVtyXtcK38mIKbLTctZP8v6GMqdNaeI3fo7g==}
+    engines: {node: '>=16'}
     dev: true
 
   /typed-array-buffer@1.0.1:

@@ -57356,6 +57356,8 @@ __nccwpck_require__.d(__webpack_exports__, {
 
 // EXTERNAL MODULE: external "node:fs/promises"
 var promises_ = __nccwpck_require__(3977);
+// EXTERNAL MODULE: external "node:path"
+var external_node_path_ = __nccwpck_require__(9411);
 // EXTERNAL MODULE: ./node_modules/.pnpm/fp-ts@2.13.1/node_modules/fp-ts/lib/TaskEither.js
 var TaskEither = __nccwpck_require__(6370);
 // EXTERNAL MODULE: ./node_modules/.pnpm/yaml@2.2.1/node_modules/yaml/dist/index.js
@@ -61323,6 +61325,7 @@ var lib = __nccwpck_require__(2401);
 
 
 
+
 // Schema
 const commitConfigSchema = z.object({
     format: z.string(),
@@ -61371,7 +61374,27 @@ const configSchema = z.object({
 });
 // Loader
 const loadConfig = TaskEither.tryCatchK(async (filepath) => {
-    const raw = await promises_.readFile(filepath, 'utf8');
+    const raw = await (async () => {
+        try {
+            return await promises_.readFile(filepath, 'utf8');
+        }
+        catch (e) {
+            // Try loading alternative extensions.
+            const parts = external_node_path_.parse(filepath);
+            let ext = '';
+            switch (parts.ext) {
+                case '.yml':
+                    ext = '.yaml';
+                    break;
+                case '.yaml':
+                    ext = '.yml';
+                    break;
+                default:
+                    throw e;
+            }
+            return await promises_.readFile(external_node_path_.join(parts.dir, parts.name + ext), 'utf8');
+        }
+    })();
     const yaml = dist/* parse */.Qc(raw);
     return configSchema.parse(yaml);
 }, (reason) => {

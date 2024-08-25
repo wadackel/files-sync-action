@@ -1,4 +1,5 @@
 import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import * as TE from 'fp-ts/TaskEither';
 import * as YAML from 'yaml';
 import { ZodError, z } from 'zod';
@@ -73,7 +74,26 @@ export type Config = z.infer<typeof configSchema>;
 // Loader
 export const loadConfig = TE.tryCatchK(
   async (filepath: string) => {
-    const raw = await fs.readFile(filepath, 'utf8');
+    const raw = await (async () => {
+      try {
+        return await fs.readFile(filepath, 'utf8');
+      } catch (e) {
+        // Try loading alternative extensions.
+        const parts = path.parse(filepath);
+        let ext = '';
+        switch (parts.ext) {
+          case '.yml':
+            ext = '.yaml';
+            break;
+          case '.yaml':
+            ext = '.yml';
+            break;
+          default:
+            throw e;
+        }
+        return await fs.readFile(path.join(parts.dir, parts.name + ext), 'utf8');
+      }
+    })();
     const yaml = YAML.parse(raw);
     return configSchema.parse(yaml);
   },

@@ -12,12 +12,16 @@ on:
       - 'releases/*'
 
 jobs:
-  build:
+  build_and_test:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4.1.1
+
       - uses: ./.github/actions/setup-node
-      - run: pnpm build
+
+      - name: Build
+        run: pnpm build
+
       - name: Compare the expected and actual dist/ directories
         id: diff
         run: |
@@ -27,62 +31,32 @@ jobs:
             exit 1
           fi
 
-  typecheck:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4.1.1
-      - uses: ./.github/actions/setup-node
-      - run: pnpm typecheck
+      - name: Test
+        run: pnpm test
 
-  test:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4.1.1
-      - uses: ./.github/actions/setup-node
-      - run: pnpm test
+      - name: Lint
+        run: pnpm lint
 
-  lint:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4.1.1
-      - uses: ./.github/actions/setup-node
-      - run: pnpm lint
+      - name: Generate
+        run: |
+          pnpm generate
+          git diff --exit-code || exit 1
 
-  generate:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4.1.1
-      - uses: ./.github/actions/setup-node
-      - run: pnpm generate
-      - run: git diff --exit-code || exit 1
-
-  pass:
-    runs-on: ubuntu-22.04
-    needs:
-      - build
-      - typecheck
-      - test
-      - lint
-      - generate
-    steps:
-      - run: exit 0
+      - name: Typecheck
+        run: pnpm typecheck
 
   publish:
     runs-on: ubuntu-22.04
     if: github.ref == 'refs/heads/main'
-    needs:
-      - pass
+    needs: build_and_test
     steps:
       - uses: actions/checkout@v4.1.1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/action-setup@v3.0.0
-      # Ignore the value of `.node-version` because semantic-release expects v18.x.
-      - uses: actions/setup-node@v3.8.1
-        with:
-          node-version: '18.x'
-          cache: 'pnpm'
+
+      - uses: ./.github/actions/setup-node
+
       - name: Generate token
         id: generate_token
         uses: tibdex/github-app-token@3beb63f4bd073e61482598c45c71c1019b59b73a # v2.1.0
@@ -90,7 +64,7 @@ jobs:
           app_id: ${{ secrets.GH_APP_RELEASER_ID }}
           installation_id: ${{ secrets.GH_APP_RELEASER_INSTALLATION_ID }}
           private_key: ${{ secrets.GH_APP_RELEASER_PRIVATE_KEY }}
-      - run: pnpm i --frozen-lockfile
+
       - name: Release
         env:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}

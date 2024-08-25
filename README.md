@@ -38,7 +38,7 @@ The following links are the actual PR and Workflow execution result logs:
 
 In this section, we explain the most common usage of `files-sync-action`. To start using it, simply create a Workflow file that runs `files-sync-action` and a configuration file, as shown below:
 
-`.github/workflows/files-sync.yml`
+`.github/workflows/files-sync.yaml`
 
 ```yaml
 name: Sync Files
@@ -86,7 +86,7 @@ jobs:
 
 </details>
 
-`.github/files-sync-config.yml`
+`.github/files-sync-config.yaml`
 
 ```yaml
 settings:
@@ -100,8 +100,8 @@ patterns:
   - files:
       - tsconfig.json
       - .prettierrc.json
-      - from: workflows/ci.yml
-        to: .github/workflows/ci.yml
+      - from: workflows/ci.yaml
+        to: .github/workflows/ci.yaml
     repositories:
       - owner/repo1
       - owner/repo2
@@ -145,7 +145,7 @@ API URL of the GitHub server.
 ### `config_file`
 
 **Required:** `false`  
-**Default:** `.github/files-sync-config.yml`
+**Default:** `.github/files-sync-config.yaml`
 
 The path for the sync configuration file.
 
@@ -167,7 +167,7 @@ An array of all synchronized file names.
 
 ## Sync Configuration
 
-The configuration file for file synchronization can be written in YAML. By default, it refers to `.github/files-sync-config.yml`. If you want to change the path, please modify the value of `inputs.config_file`.
+The configuration file for file synchronization can be written in YAML. By default, it refers to `.github/files-sync-config.yaml`. If you want to change the path, please modify the value of `inputs.config_file`.
 
 The configuration file consists of a `settings` section, which defines common settings, and a `patterns` section, which defines individual file synchronization patterns. The contents defined in `settings` are inherited by all `patterns`.
 
@@ -241,8 +241,8 @@ Configure the synchronization pattern for files and directories and the target r
 patterns:
   - files:
       - tsconfig.json # file (simple)
-      - from: workflows/ci.yml # file (details)
-        to: .github/workflows/ci.yml
+      - from: workflows/ci.yaml # file (details)
+        to: .github/workflows/ci.yaml
       - from: shared # directory
         to: shared
         exclude:
@@ -382,7 +382,7 @@ Introducing cases where you want to verify the operation of `files-sync-action` 
 Create a configuration file for local testing and a script for running tests. These files are excluded from Git management by `.gitignore`.
 
 ```bash
-$ touch test.yml test.js
+$ touch test.yaml test.js
 ```
 
 Customize the contents of each created file.
@@ -391,7 +391,7 @@ Customize the contents of each created file.
 
 ```javascript
 process.env['INPUT_GITHUB_TOKEN'] = '...';
-process.env['INPUT_CONFIG_FILE'] = 'test.yml';
+process.env['INPUT_CONFIG_FILE'] = 'test.yaml';
 process.env['INPUT_GITHUB_API_URL'] = 'https://api.github.com';
 process.env['GITHUB_SERVER_URL'] = 'https://github.com';
 process.env['GITHUB_REPOSITORY'] = 'local/test';
@@ -400,7 +400,7 @@ process.env['GITHUB_RUN_NUMBER'] = '0';
 await import('./dist/index.js');
 ```
 
-`test.yml`
+`test.yaml`
 
 ```yaml
 patterns:
@@ -421,11 +421,11 @@ $ pnpm build && node test.js
 
 [MIT © wadackel][license]
 
-[badge-build]: https://img.shields.io/github/actions/workflow/status/wadackel/files-sync-action/ci.yml?style=for-the-badge
+[badge-build]: https://img.shields.io/github/actions/workflow/status/wadackel/files-sync-action/ci.yaml?style=for-the-badge
 [badge-license]: https://img.shields.io/github/license/wadackel/files-sync-action?style=for-the-badge
 [badge-prettier]: https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=for-the-badge
 [badge-semantic-release]: https://img.shields.io/badge/semantic--release-angular-e10079?logo=semantic-release&style=for-the-badge
-[build]: https://github.com/wadackel/files-sync-action/actions/workflows/ci.yml
+[build]: https://github.com/wadackel/files-sync-action/actions/workflows/ci.yaml
 [license]: ./LICENSE
 [prettier]: https://github.com/prettier/prettier
 [semantic-release]: https://github.com/semantic-release/semantic-release

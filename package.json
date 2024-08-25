@@ -117,7 +117,7 @@
     "ts-morph": "22.0.0",
     "tsx": "4.7.1",
     "type-fest": "3.13.1",
-    "typescript": "5.4.2",
+    "typescript": "5.5.4",
     "vitest": "1.4.0"
   },
   "packageManager": "pnpm@9.8.0"

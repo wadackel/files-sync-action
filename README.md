@@ -21,11 +21,7 @@ A customizable action that synchronizes files across multiple repositories.
 
 The following links are the actual PR and Workflow execution result logs:
 
-<small>
-
 [Actual PR][demo-pr]
-
-</small>
 
 ![Screenshot](./assets/screenshot.png)
 

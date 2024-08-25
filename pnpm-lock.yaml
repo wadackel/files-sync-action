@@ -100,8 +100,8 @@ importers:
         specifier: 15.2.9
         version: 15.2.9
       npm-run-all2:
-        specifier: 5.0.0
-        version: 5.0.0
+        specifier: 5.0.2
+        version: 5.0.2
       prettier:
         specifier: 3.3.3
         version: 3.3.3
@@ -962,6 +962,10 @@ packages:
   ansi-styles@4.3.0:
     resolution: {integrity: sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==}
     engines: {node: '>=8'}
+
+  ansi-styles@5.2.0:
+    resolution: {integrity: sha512-Cxwpt2SfTzTtXcfOlzGEee8O+c+MmUgGrNiBcXnuWxuFJHe6a5Hz7qwhwe5OgaSYI0IJvkLqWX1ASG+cJOkEiA==}
+    engines: {node: '>=10'}
 
   ansi-styles@6.2.1:
     resolution: {integrity: sha512-bN798gFfQX+viw3R7yrGWRqnrN2oRkEkUjjl4JNn4E8GxxbjtG3FbrEIIY3l8/hrwUwIeCZvi4QuOTP4MErVug==}
@@ -2291,8 +2295,8 @@ packages:
     resolution: {integrity: sha512-IO9QvjUMWxPQQhs60oOu10CRkWCiZzSUkzbXGGV9pviYl1fXYcvkzQ5jV9z8Y6un8ARoVRl4EtC6v6jNqbaJ/w==}
     engines: {node: '>=14.16'}
 
-  npm-run-all2@5.0.0:
-    resolution: {integrity: sha512-twczQhEpj55UROtg0Xz0nzn83TanS5Re12g5g1hcdnyAhlWOt9VNHdSHf2Z6MO3/wOVqy9tEdi0ruJt5NnMgmw==}
+  npm-run-all2@5.0.2:
+    resolution: {integrity: sha512-S2G6FWZ3pNWAAKm2PFSOtEAG/N+XO/kz3+9l6V91IY+Y3XFSt7Lp7DV92KCgEboEW0hRTu0vFaMe4zXDZYaOyA==}
     engines: {node: '>= 10'}
     hasBin: true
 
@@ -4090,6 +4094,8 @@ snapshots:
     dependencies:
       color-convert: 2.0.1
 
+  ansi-styles@5.2.0: {}
+
   ansi-styles@6.2.1: {}
 
   any-promise@1.3.0: {}
@@ -5525,9 +5531,9 @@ snapshots:
 
   normalize-url@8.0.1: {}
 
-  npm-run-all2@5.0.0:
+  npm-run-all2@5.0.2:
     dependencies:
-      ansi-styles: 4.3.0
+      ansi-styles: 5.2.0
       cross-spawn: 7.0.3
       memorystream: 0.3.1
       minimatch: 3.1.2

@@ -17,6 +17,7 @@ jobs:
         with:
           app-id: ${{ secrets.GH_APP_E2E_ID }}
           private-key: ${{ secrets.GH_APP_E2E_PRIVATE_KEY }}
+          owner: wadackel
 
       - name: Sync Files
         uses: ./

@@ -21,7 +21,11 @@ A customizable action that synchronizes files across multiple repositories.
 
 The following links are the actual PR and Workflow execution result logs:
 
-[Actual PR][demo-pr] | [Workflow Run Log][demo-workflow-log]
+<small>
+
+[Actual PR][demo-pr]
+
+</small>
 
 ![Screenshot](./assets/screenshot.png)
 
@@ -51,8 +55,8 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: wadackel/files-sync-action@v2
+      - uses: actions/checkout@v4
+      - uses: wadackel/files-sync-action@v3
         with:
           github_token: ${{ secrets.GH_FILES_SYNC_TOKEN }}
 ```
@@ -71,14 +75,15 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Generate token
         id: generate_token
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-      - uses: wadackel/files-sync-action@v2
+          # Optional: Set the permissions for the token (e.g. "owner", "repositories")
+      - uses: wadackel/files-sync-action@v3
         with:
           github_token: ${{ steps.generate_token.outputs.token }}
 ```

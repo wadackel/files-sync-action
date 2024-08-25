@@ -23,4 +23,4 @@ jobs:
         uses: ./
         with:
           github_token: ${{ steps.generate_token.outputs.token }}
-          config_file: '.github/files-sync-e2e-config.yml'
+          config_file: '.github/files-sync-e2e-config.yaml'

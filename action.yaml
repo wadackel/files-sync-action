@@ -14,7 +14,7 @@ inputs:
     default: 'https://api.github.com'
   config_file:
     description: 'The path for the sync configuration file.'
-    default: '.github/files-sync-config.yml'
+    default: '.github/files-sync-config.yaml'
 
 outputs:
   pull_request_urls:

@@ -20,7 +20,7 @@ const actionSchema = z.object({
 const run = async () => {
   // action
   const __dirname = dirname(import.meta.url);
-  const raw = await fs.readFile(path.join(__dirname, '../action.yml'), 'utf8');
+  const raw = await fs.readFile(path.join(__dirname, '../action.yaml'), 'utf8');
   const action = YAML.parse(raw);
   const { inputs } = actionSchema.parse(action);
 

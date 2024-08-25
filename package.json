@@ -71,11 +71,16 @@
       "main"
     ],
     "plugins": [
-      "@semantic-release/commit-analyzer",
+      [
+        "@semantic-release/commit-analyzer",
+        {
+          "preset": "conventionalcommits"
+        }
+      ],
       "@semantic-release/release-notes-generator",
-      "@semantic-release/github"
-    ],
-    "preset": "angular"
+      "@semantic-release/github",
+      "semantic-release-major-tag"
+    ]
   },
   "dependencies": {
     "@actions/core": "^1.10.0",
@@ -102,6 +107,7 @@
     "@typescript-eslint/eslint-plugin": "6.21.0",
     "@typescript-eslint/parser": "6.21.0",
     "@vercel/ncc": "0.38.1",
+    "conventional-changelog-conventionalcommits": "^8.0.0",
     "eslint": "8.51.0",
     "eslint-config-prettier": "8.10.0",
     "eslint-plugin-import": "2.29.1",

@@ -76,37 +76,8 @@ jobs:
         id: generate_token
         uses: actions/create-github-app-token@v1
         with:
-          app_id: ${{ secrets.GH_APP_ID }}
-          private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-      - uses: wadackel/files-sync-action@v2
-        with:
-          github_token: ${{ steps.generate_token.outputs.token }}
-```
-
-</details>
-
-<details>
-<summary>GitHub App Tokens (with <a href="https://github.com/tibdex/github-app-token">tibdex/github-app-token</a>)</summary>
-
-```yaml
-name: Sync Files
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-jobs:
-  sync:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Generate token
-        id: generate_token
-        uses: tibdex/github-app-token@v1
-        with:
-          app_id: ${{ secrets.GH_APP_ID }}
-          installation_id: ${{ secrets.GH_APP_INSTALLATION_ID }}
-          private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
       - uses: wadackel/files-sync-action@v2
         with:
           github_token: ${{ steps.generate_token.outputs.token }}

@@ -61509,11 +61509,12 @@ const defaultFile = {
 const handleErrorReason = (reason) => new Error(String(reason));
 const removeAtMark = (input) => input.replace(/^@/, '');
 const parseRepositoryName = (name) => {
-    const segments = name.split('/');
-    if (segments.length !== 2 || !segments[0] || !segments[1]) {
+    const [fullName = '', branch] = name.split('@');
+    const [owner, repo] = fullName.split('/');
+    if (!owner || !repo) {
         return fp_ts_Either__WEBPACK_IMPORTED_MODULE_1__.left(new Error(`Repository name must be in the "owner/repo" format. ("${name}" is an invalid format)`));
     }
-    return fp_ts_Either__WEBPACK_IMPORTED_MODULE_1__.right([segments[0], segments[1]]);
+    return fp_ts_Either__WEBPACK_IMPORTED_MODULE_1__.right([owner, repo, branch]);
 };
 const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async ({ rest, name }) => {
     const parsed = parseRepositoryName(name);
@@ -61525,6 +61526,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
         repo: parsed.right[1],
     };
     const { data: repo } = await rest.repos.get(defaults);
+    const targetBranch = parsed.right[2] ?? repo.default_branch;
     return {
         owner: defaults.owner,
         name: defaults.repo,
@@ -61532,7 +61534,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
             // get base branch
             const { data: base } = await rest.git.getRef({
                 ...defaults,
-                ref: `heads/${repo.default_branch}`,
+                ref: `heads/${targetBranch}`,
             });
             // update exisiting branch
             const updated = await fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatch(async () => {
@@ -61621,6 +61623,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
             if (number !== null && number !== undefined) {
                 const { data } = await rest.pulls.update({
                     ...defaults,
+                    base: targetBranch,
                     pull_number: number,
                     title,
                     body,
@@ -61630,7 +61633,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
             else {
                 const { data } = await rest.pulls.create({
                     ...defaults,
-                    base: repo.default_branch,
+                    base: targetBranch,
                     head: branch,
                     title,
                     body,

@@ -7,12 +7,16 @@ const handleErrorReason = (reason: unknown) => new Error(String(reason));
 
 const removeAtMark = (input: string) => input.replace(/^@/, '');
 
-const parseRepositoryName = (name: string): T.Either<Error, [owner: string, repo: string]> => {
-  const segments = name.split('/');
-  if (segments.length !== 2 || !segments[0] || !segments[1]) {
+const parseRepositoryName = (
+  name: string,
+): T.Either<Error, [owner: string, repo: string, branch: string | undefined]> => {
+  const [fullName = '', branch] = name.split('@');
+  const [owner, repo] = fullName.split('/');
+
+  if (!owner || !repo) {
     return T.left(new Error(`Repository name must be in the "owner/repo" format. ("${name}" is an invalid format)`));
   }
-  return T.right([segments[0]!, segments[1]!]);
+  return T.right([owner, repo, branch]);
 };
 
 export type Repository = {
@@ -102,6 +106,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
     };
 
     const { data: repo } = await rest.repos.get(defaults);
+    const targetBranch = parsed.right[2] ?? repo.default_branch;
 
     return {
       owner: defaults.owner,
@@ -111,7 +116,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
         // get base branch
         const { data: base } = await rest.git.getRef({
           ...defaults,
-          ref: `heads/${repo.default_branch}`,
+          ref: `heads/${targetBranch}`,
         });
 
         // update exisiting branch
@@ -215,6 +220,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
         if (number !== null && number !== undefined) {
           const { data } = await rest.pulls.update({
             ...defaults,
+            base: targetBranch,
             pull_number: number,
             title,
             body,
@@ -223,7 +229,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
         } else {
           const { data } = await rest.pulls.create({
             ...defaults,
-            base: repo.default_branch,
+            base: targetBranch,
             head: branch,
             title,
             body,

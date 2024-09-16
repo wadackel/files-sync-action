@@ -104,7 +104,7 @@ patterns:
         to: .github/workflows/ci.yaml
     repositories:
       - owner/repo1
-      - owner/repo2
+      - owner/repo2@target_branch
 ```
 
 If you need more customization, please refer to the [Sync Configuration](#sync-configuration) section.
@@ -226,14 +226,14 @@ settings:
 
 Configure the synchronization pattern for files and directories and the target repositories for synchronization. While inheriting the contents defined in `settings`, you can customize the commit, branch, and PR settings for each synchronization pattern.
 
-| Key            | Required | Type                          | Description                                                                                        |
-| :------------- | :------- | :---------------------------- | :------------------------------------------------------------------------------------------------- |
-| `files`        | `true`   | Array<string \| [FileConfig]> | List of files to synchronize. Supports files and directories.                                      |
-| `repositories` | `true`   | Array<string>                 | List of repositories to synchronize the files specified in `files`                                 |
-| `commit`       | `false`  | [CommitConfig]                | Various settings related to commits                                                                |
-| `branch`       | `false`  | [BranchConfig]                | Various settings related to branches                                                               |
-| `pull_request` | `false`  | [PullRequestConfig]           | Various settings related to automatically generated PRs                                            |
-| `template`     | `false`  | Record<string, any>           | Template variables to use for the files specified in `files`. Disables [EJS][ejs] if not specified |
+| Key            | Required | Type                          | Description                                                                                           |
+| :------------- | :------- | :---------------------------- | :---------------------------------------------------------------------------------------------------- |
+| `files`        | `true`   | Array<string \| [FileConfig]> | List of files to synchronize. Supports files and directories.                                         |
+| `repositories` | `true`   | Array<string>                 | List of repositories (optionally with target branches) to synchronize the files specified in `files`. |
+| `commit`       | `false`  | [CommitConfig]                | Various settings related to commits                                                                   |
+| `branch`       | `false`  | [BranchConfig]                | Various settings related to branches                                                                  |
+| `pull_request` | `false`  | [PullRequestConfig]           | Various settings related to automatically generated PRs                                               |
+| `template`     | `false`  | Record<string, any>           | Template variables to use for the files specified in `files`. Disables [EJS][ejs] if not specified    |
 
 **Examples:**
 
@@ -248,9 +248,9 @@ patterns:
         exclude:
           - '*.txt'
     repositories:
-      - owner/repo1
-      - owner/repo2
-      - owner/repo3
+      - owner/repo1 # Uses repo1's default branch as the target branch
+      - owner/repo2@target # Uses 'target' as the target branch
+      - owner/repo3@feature/target # Uses 'feature/target' as the target branch
     commit:
       prefix: 'build'
     pull_request:

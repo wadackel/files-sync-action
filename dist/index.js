@@ -57352,7 +57352,7 @@ __nccwpck_require__.d(__webpack_exports__, {
   "ME": () => (/* binding */ loadConfig)
 });
 
-// UNUSED EXPORTS: branchConfigSchema, commitConfigSchema, configSchema, fileConfigSchema, patternConfigSchema, pullRequestConfigSchema, settingsConfigSchema, templateConfigSchema
+// UNUSED EXPORTS: MergeMode, MergeStrategy, branchConfigSchema, commitConfigSchema, configSchema, fileConfigSchema, mergeConfigSchema, patternConfigSchema, pullRequestConfigSchema, settingsConfigSchema, templateConfigSchema
 
 // EXTERNAL MODULE: external "node:fs/promises"
 var promises_ = __nccwpck_require__(3977);
@@ -61338,6 +61338,15 @@ const branchConfigSchema = z.object({
     prefix: z.string(),
 })
     .partial();
+const MergeMode = z["enum"](['disabled', 'immediate', 'auto', 'admin']);
+const MergeStrategy = z["enum"](['merge', 'rebase', 'squash']);
+const mergeConfigSchema = z.object({
+    mode: MergeMode,
+    strategy: MergeStrategy,
+    delete_branch: z.boolean(),
+    commit: commitConfigSchema,
+})
+    .partial();
 const pullRequestConfigSchema = z.object({
     disabled: z.boolean(),
     force: z.boolean(),
@@ -61346,6 +61355,7 @@ const pullRequestConfigSchema = z.object({
     reviewers: z.array(z.string()),
     assignees: z.array(z.string()),
     labels: z.array(z.string()),
+    merge: mergeConfigSchema,
 })
     .partial();
 const settingsConfigSchema = z.object({
@@ -61482,6 +61492,12 @@ This PR contains the following updates:
         reviewers: [],
         assignees: [],
         labels: [],
+        merge: {
+            mode: 'disabled',
+            strategy: 'merge',
+            delete_branch: false,
+            commit: {}, // default -> Git provided default merge commit message
+        },
     },
 };
 const defaultFile = {
@@ -61495,7 +61511,8 @@ const defaultFile = {
 /***/ ((__unused_webpack_module, __webpack_exports__, __nccwpck_require__) => {
 
 /* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
-/* harmony export */   "n": () => (/* binding */ createGitHub)
+/* harmony export */   "n": () => (/* binding */ createGitHub),
+/* harmony export */   "z": () => (/* binding */ MergeResult)
 /* harmony export */ });
 /* harmony import */ var fp_ts_Either__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(9813);
 /* harmony import */ var fp_ts_Either__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__nccwpck_require__.n(fp_ts_Either__WEBPACK_IMPORTED_MODULE_1__);
@@ -61516,7 +61533,14 @@ const parseRepositoryName = (name) => {
     }
     return fp_ts_Either__WEBPACK_IMPORTED_MODULE_1__.right([owner, repo, branch]);
 };
-const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async ({ rest, name }) => {
+var MergeResult;
+(function (MergeResult) {
+    MergeResult["Unmergeable"] = "The pull request cannot currently be merged.";
+    MergeResult["AlreadyHandled"] = "The pull request is already merged or set to auto-merge.";
+    MergeResult["Prepared"] = "The pull request was set to auto-merge.";
+    MergeResult["Merged"] = "The pull request was merged.";
+})(MergeResult || (MergeResult = {}));
+const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async ({ octokit, name }) => {
     const parsed = parseRepositoryName(name);
     if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_1__.isLeft(parsed)) {
         throw parsed.left;
@@ -61525,20 +61549,105 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
         owner: parsed.right[0],
         repo: parsed.right[1],
     };
-    const { data: repo } = await rest.repos.get(defaults);
+    const { data: repo } = await octokit.rest.repos.get(defaults);
     const targetBranch = parsed.right[2] ?? repo.default_branch;
+    //--- MERGE SUPPORT START ---
+    const getGraphPullRequest = async (number) => {
+        const { repository: { pullRequest: pr }, } = await octokit.graphql(`
+          query($owner: String!, $repo: String!, $number: Int!) {
+            repository(owner: $owner, name: $repo) {
+              pullRequest(number: $number) {
+                id
+                isInMergeQueue
+                isMergeQueueEnabled
+                isDraft
+                state
+                mergeStateStatus
+                merged
+                headRefName
+                autoMergeRequest {
+                  mergeMethod
+                }
+              }
+            }
+          }
+        `, {
+            ...defaults,
+            number,
+        });
+        return pr;
+    };
+    const coerceMergeMode = (mode, gpr) => {
+        // Must use auto for merge queue, unless bypassing
+        if (gpr.isMergeQueueEnabled && mode !== 'admin')
+            return 'auto';
+        // Always immediate merge if possible
+        const status = gpr.mergeStateStatus;
+        if (status == 'CLEAN' || status == 'HAS_HOOKS' || status == 'UNSTABLE')
+            return 'immediate';
+        // Fall back to request
+        return mode;
+    };
+    const disablePullRequestAutoMerge = async (id) => {
+        await octokit.graphql(`
+          mutation($id: ID!) {
+            disablePullRequestAutoMerge(input: { pullRequestId: $id }) {
+              clientMutationId
+            }
+          }
+        `, {
+            id,
+        });
+    };
+    const canMergePr = (gpr, mode) => {
+        if (gpr.state !== 'OPEN')
+            return false;
+        if (mode === 'auto')
+            return true;
+        const blocked = gpr.mergeStateStatus === 'BLOCKED' && mode !== 'admin';
+        const behind = gpr.mergeStateStatus === 'BEHIND' && mode !== 'admin';
+        const dirty = gpr.mergeStateStatus === 'DIRTY';
+        return !gpr.isDraft && !blocked && !behind && !dirty;
+    };
+    const enableGraphPullRequestAutoMerge = async (gprmi) => {
+        await octokit.graphql(`
+          mutation($input: EnablePullRequestAutoMergeInput!) {
+            enablePullRequestAutoMerge(input: $input) {
+              clientMutationId
+            }
+          }
+        `, {
+            input: {
+                ...gprmi,
+            },
+        });
+    };
+    const mergeGraphPullRequest = async (gprmi) => {
+        await octokit.graphql(`
+          mutation($input: MergePullRequestInput!) {
+            mergePullRequest(input: $input) {
+              clientMutationId
+            }
+          }
+        `, {
+            input: {
+                ...gprmi,
+            },
+        });
+    };
+    //--- MERGE SUPPORT END ---
     return {
         owner: defaults.owner,
         name: defaults.repo,
         createBranch: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (name) => {
             // get base branch
-            const { data: base } = await rest.git.getRef({
+            const { data: base } = await octokit.rest.git.getRef({
                 ...defaults,
                 ref: `heads/${targetBranch}`,
             });
             // update exisiting branch
             const updated = await fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatch(async () => {
-                const { data } = await rest.git.updateRef({
+                const { data } = await octokit.rest.git.updateRef({
                     ...defaults,
                     ref: `heads/${name}`,
                     sha: base.object.sha,
@@ -61553,7 +61662,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                 };
             }
             // create branch
-            const { data: ref } = await rest.git.createRef({
+            const { data: ref } = await octokit.rest.git.createRef({
                 ...defaults,
                 ref: `refs/heads/${name}`,
                 sha: base.object.sha,
@@ -61564,14 +61673,14 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
             };
         }, handleErrorReason),
         deleteBranch: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (name) => {
-            await rest.git.deleteRef({
+            await octokit.rest.git.deleteRef({
                 ...defaults,
                 ref: `heads/${name}`,
             });
         }, handleErrorReason),
         commit: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async ({ parent, branch, files, message, force }) => {
             // create tree
-            const { data: tree } = await rest.git.createTree({
+            const { data: tree } = await octokit.rest.git.createTree({
                 ...defaults,
                 base_tree: parent,
                 tree: files.map((file) => ({
@@ -61581,14 +61690,14 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                 })),
             });
             // commit
-            const { data: commit } = await rest.git.createCommit({
+            const { data: commit } = await octokit.rest.git.createCommit({
                 ...defaults,
                 tree: tree.sha,
                 message,
                 parents: [parent],
             });
             // apply to branch
-            await rest.git.updateRef({
+            await octokit.rest.git.updateRef({
                 ...defaults,
                 ref: `heads/${branch}`,
                 sha: commit.sha,
@@ -61597,7 +61706,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
             return commit;
         }, handleErrorReason),
         compareCommits: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (base, head) => {
-            const { data: diff } = await rest.repos.compareCommits({
+            const { data: diff } = await octokit.rest.repos.compareCommits({
                 ...defaults,
                 base,
                 head,
@@ -61605,7 +61714,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
             return diff.files;
         }, handleErrorReason),
         findExistingPullRequestByBranch: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (branch) => {
-            const { data: prs } = await rest.pulls.list({
+            const { data: prs } = await octokit.rest.pulls.list({
                 ...defaults,
                 state: 'open',
                 head: `${defaults.owner}:${branch}`,
@@ -61613,7 +61722,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
             return prs[0] ?? null;
         }, handleErrorReason),
         closePullRequest: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (number) => {
-            await rest.pulls.update({
+            await octokit.rest.pulls.update({
                 ...defaults,
                 pull_number: number,
                 state: 'closed',
@@ -61621,7 +61730,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
         }, handleErrorReason),
         createOrUpdatePullRequest: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async ({ title, body, number, branch }) => {
             if (number !== null && number !== undefined) {
-                const { data } = await rest.pulls.update({
+                const { data } = await octokit.rest.pulls.update({
                     ...defaults,
                     base: targetBranch,
                     pull_number: number,
@@ -61631,7 +61740,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                 return data;
             }
             else {
-                const { data } = await rest.pulls.create({
+                const { data } = await octokit.rest.pulls.create({
                     ...defaults,
                     base: targetBranch,
                     head: branch,
@@ -61641,8 +61750,41 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                 return data;
             }
         }, handleErrorReason),
+        mergePullRequest: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async ({ number, mode, strategy, commitHeadline, commitBody }) => {
+            // Get GraphQl version of PR, as REST version isn't as complete
+            const gpr = await getGraphPullRequest(number);
+            // Handle pre-merge checks
+            if (gpr.isInMergeQueue || gpr.merged)
+                return MergeResult.AlreadyHandled;
+            mode = coerceMergeMode(mode, gpr);
+            if (gpr.autoMergeRequest) {
+                if (mode === 'auto') {
+                    return MergeResult.AlreadyHandled; // Already set to auto
+                }
+                else {
+                    await disablePullRequestAutoMerge(gpr.id);
+                }
+            }
+            if (!canMergePr(gpr, mode))
+                return MergeResult.Unmergeable;
+            // Merge/Setup auto-merge
+            const mergeInputs = {
+                ...(commitBody && { commitBody }),
+                ...(commitHeadline && { commitHeadline }),
+                mergeMethod: strategy.toUpperCase(),
+                pullRequestId: gpr.id,
+            };
+            if (mode == 'auto') {
+                await enableGraphPullRequestAutoMerge(mergeInputs);
+                return MergeResult.Prepared;
+            }
+            else {
+                await mergeGraphPullRequest(mergeInputs);
+                return MergeResult.Merged;
+            }
+        }, handleErrorReason),
         addPullRequestLabels: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (number, labels) => {
-            await rest.issues.addLabels({
+            await octokit.rest.issues.addLabels({
                 ...defaults,
                 issue_number: number,
                 labels,
@@ -61659,7 +61801,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                 }
                 return acc;
             }, [[], []]);
-            await rest.pulls.requestReviewers({
+            await octokit.rest.pulls.requestReviewers({
                 ...defaults,
                 pull_number: number,
                 reviewers,
@@ -61667,7 +61809,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
             });
         }, handleErrorReason),
         addPullRequestAssignees: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (number, assignees) => {
-            await rest.issues.addAssignees({
+            await octokit.rest.issues.addAssignees({
                 ...defaults,
                 issue_number: number,
                 assignees: assignees.map((a) => removeAtMark(a)),
@@ -61676,13 +61818,13 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
     };
 }, handleErrorReason);
 const createGitHub = (inputs) => {
-    const { rest } = (0,_actions_github__WEBPACK_IMPORTED_MODULE_0__.getOctokit)(inputs.github_token, {
+    const octokit = (0,_actions_github__WEBPACK_IMPORTED_MODULE_0__.getOctokit)(inputs.github_token, {
         baseUrl: inputs.github_api_url,
     });
     return {
         initializeRepository: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (name) => {
             const repo = await createGitHubRepository({
-                rest,
+                octokit,
                 name,
             })();
             if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_1__.isLeft(repo)) {
@@ -62015,6 +62157,51 @@ const run = async () => {
             else {
                 info('Assignees', 'None');
             }
+            // Merge
+            const mergeCfg = cfg.pull_request.merge;
+            if (mergeCfg.mode !== 'disabled') {
+                // Prepare message
+                let commitHeadline = null;
+                let commitBody = null;
+                const cc = mergeCfg.commit;
+                if (cc.format) {
+                    const message = (0,ejs__WEBPACK_IMPORTED_MODULE_3__.render)(cc.format, {
+                        prefix: cc.prefix ?? '',
+                        subject: cc.subject
+                            ? (0,ejs__WEBPACK_IMPORTED_MODULE_3__.render)(cc.subject, {
+                                repository: _constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_REPOSITORY */ .Xf,
+                                index: i,
+                            })
+                            : '',
+                        repository: _constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_REPOSITORY */ .Xf,
+                        index: i,
+                    });
+                    // Merge commit specifically needs headline to be separate
+                    ({ headline: commitHeadline, body: commitBody } = (0,_utils_js__WEBPACK_IMPORTED_MODULE_10__/* .splitCommitMessage */ .iE)(message));
+                }
+                // Run merge
+                const res = await repo.mergePullRequest({
+                    number: pr.right.number,
+                    mode: mergeCfg.mode,
+                    strategy: mergeCfg.strategy,
+                    commitHeadline,
+                    commitBody,
+                })();
+                if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.isLeft(res)) {
+                    _actions_core__WEBPACK_IMPORTED_MODULE_2__.setFailed(`${id} - PR merge error: ${res.left.message}`);
+                    return 1;
+                }
+                const mergeRes = res.right;
+                info('Pull Request Merge', mergeRes);
+                if (mergeRes === _github_js__WEBPACK_IMPORTED_MODULE_8__/* .MergeResult.Merged */ .z.Merged && mergeCfg.delete_branch) {
+                    const res = await repo.deleteBranch(branch)();
+                    if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.isLeft(res)) {
+                        _actions_core__WEBPACK_IMPORTED_MODULE_2__.setFailed(`${id} - Delete branch error: ${res.left.message}`);
+                        return 1;
+                    }
+                    info('Branch Deleted', `${name}@${branch}`);
+                }
+            }
             info('Status', 'Complete');
             // Set ouptut values
             prUrls.add(pr.right.html_url);
@@ -62048,7 +62235,8 @@ __webpack_async_result__();
 // EXPORTS
 __nccwpck_require__.d(__webpack_exports__, {
   "XH": () => (/* binding */ convertValidBranchName),
-  "TS": () => (/* binding */ merge)
+  "TS": () => (/* binding */ merge),
+  "iE": () => (/* binding */ splitCommitMessage)
 });
 
 // UNUSED EXPORTS: dirname, filename
@@ -62699,6 +62887,13 @@ const convertValidBranchName = (input) => {
     b = b.replace(/[@{\\~^:?*[\]]+/g, ''); // remove invalid character
     b = b.replace(/[.]+$/, ''); // remove "." at the end of string
     return b;
+};
+const splitCommitMessage = (message) => {
+    const dividerIdx = message.indexOf('\n');
+    const hasBody = dividerIdx !== -1;
+    const headline = hasBody ? message.slice(0, dividerIdx) : message;
+    const body = hasBody ? message.slice(dividerIdx + 1) : null;
+    return { headline, body };
 };
 
 

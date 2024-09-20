@@ -47,6 +47,12 @@ This PR contains the following updates:
     reviewers: [] as string[],
     assignees: [] as string[],
     labels: [] as string[],
+    merge: {
+      mode: 'disabled',
+      strategy: 'merge',
+      delete_branch: false,
+      commit: {}, // default -> Git provided default merge commit message
+    },
   },
 };
 

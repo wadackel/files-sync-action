@@ -28,3 +28,11 @@ export const convertValidBranchName = (input: string): string => {
   b = b.replace(/[.]+$/, ''); // remove "." at the end of string
   return b;
 };
+
+export const splitCommitMessage = (message: string): { headline: string; body: string | null } => {
+  const dividerIdx = message.indexOf('\n');
+  const hasBody = dividerIdx !== -1;
+  const headline = hasBody ? message.slice(0, dividerIdx) : message;
+  const body = hasBody ? message.slice(dividerIdx + 1) : null;
+  return { headline, body };
+};

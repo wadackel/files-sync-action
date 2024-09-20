@@ -23,6 +23,22 @@ export const branchConfigSchema = z
   .partial();
 export type BranchConfig = z.infer<typeof branchConfigSchema>;
 
+export const MergeMode = z.enum(['disabled', 'immediate', 'auto', 'admin']);
+export type MergeMode = z.infer<typeof MergeMode>;
+
+export const MergeStrategy = z.enum(['merge', 'rebase', 'squash']);
+export type MergeStrategy = z.infer<typeof MergeStrategy>;
+
+export const mergeConfigSchema = z
+  .object({
+    mode: MergeMode,
+    strategy: MergeStrategy,
+    delete_branch: z.boolean(),
+    commit: commitConfigSchema,
+  })
+  .partial();
+export type MergeConfig = z.infer<typeof mergeConfigSchema>;
+
 export const pullRequestConfigSchema = z
   .object({
     disabled: z.boolean(),
@@ -32,6 +48,7 @@ export const pullRequestConfigSchema = z
     reviewers: z.array(z.string()),
     assignees: z.array(z.string()),
     labels: z.array(z.string()),
+    merge: mergeConfigSchema,
   })
   .partial();
 export type PullRequestConfig = z.infer<typeof pullRequestConfigSchema>;

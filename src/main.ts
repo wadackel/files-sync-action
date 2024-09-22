@@ -19,9 +19,9 @@ import {
   defaultEntryConfig,
   defaultFile,
 } from './constants.js';
-import { createGitHub } from './github.js';
+import { createGitHub, MergeResult } from './github.js';
 import { getInputs } from './inputs.js';
-import { convertValidBranchName, merge } from './utils.js';
+import { convertValidBranchName, merge, splitCommitMessage } from './utils.js';
 
 const json = (input: unknown) => JSON.stringify(input, null, '  ');
 const info = (key: string, value: string) => core.info(`${key.padStart(21)}: ${value}`);
@@ -315,6 +315,56 @@ const run = async (): Promise<number> => {
         info('Assignees', cfg.pull_request.assignees.join(', '));
       } else {
         info('Assignees', 'None');
+      }
+
+      // Merge
+      const mergeCfg = cfg.pull_request.merge;
+      if (mergeCfg.mode !== 'disabled') {
+        // Prepare message
+        let commitHeadline = null;
+        let commitBody = null;
+
+        const cc = mergeCfg.commit;
+        if (cc.format) {
+          const message = render(cc.format, {
+            prefix: cc.prefix ?? '',
+            subject: cc.subject
+              ? render(cc.subject, {
+                  repository: GH_REPOSITORY,
+                  index: i,
+                })
+              : '',
+            repository: GH_REPOSITORY,
+            index: i,
+          });
+
+          // Merge commit specifically needs headline to be separate
+          ({ headline: commitHeadline, body: commitBody } = splitCommitMessage(message));
+        }
+
+        // Run merge
+        const res = await repo.mergePullRequest({
+          number: pr.right.number,
+          mode: mergeCfg.mode,
+          strategy: mergeCfg.strategy,
+          commitHeadline,
+          commitBody,
+        })();
+        if (T.isLeft(res)) {
+          core.setFailed(`${id} - PR merge error: ${res.left.message}`);
+          return 1;
+        }
+        const mergeRes = res.right;
+        info('Pull Request Merge', mergeRes);
+
+        if (mergeRes === MergeResult.Merged && mergeCfg.delete_branch) {
+          const res = await repo.deleteBranch(branch)();
+          if (T.isLeft(res)) {
+            core.setFailed(`${id} - Delete branch error: ${res.left.message}`);
+            return 1;
+          }
+          info('Branch Deleted', `${name}@${branch}`);
+        }
       }
 
       info('Status', 'Complete');

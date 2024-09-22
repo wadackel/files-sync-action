@@ -2,6 +2,7 @@ import * as T from 'fp-ts/Either';
 import * as TE from 'fp-ts/TaskEither';
 import { getOctokit } from '@actions/github';
 import type { Inputs } from './inputs.js';
+import type { MergeMode, MergeStrategy } from './config.ts';
 
 const handleErrorReason = (reason: unknown) => new Error(String(reason));
 
@@ -71,6 +72,21 @@ export type GitHubRepositoryCreateOrUpdatePullRequestParams = {
   branch: string;
 };
 
+export type GitHubRepositoryMergePullRequestParams = {
+  number: number;
+  mode: MergeMode;
+  strategy: MergeStrategy;
+  commitHeadline: string | null;
+  commitBody: string | null;
+};
+
+export enum MergeResult {
+  Unmergeable = 'The pull request cannot currently be merged.',
+  AlreadyHandled = 'The pull request is already merged or set to auto-merge.',
+  Prepared = 'The pull request was set to auto-merge.',
+  Merged = 'The pull request was merged.',
+}
+
 export type GitHubRepository = {
   owner: string;
   name: string;
@@ -83,18 +99,43 @@ export type GitHubRepository = {
   createOrUpdatePullRequest: (
     params: GitHubRepositoryCreateOrUpdatePullRequestParams,
   ) => TE.TaskEither<Error, PullRequest>;
+  mergePullRequest: (params: GitHubRepositoryMergePullRequestParams) => TE.TaskEither<Error, MergeResult>;
   addPullRequestLabels: (number: number, labels: string[]) => TE.TaskEither<Error, void>;
   addPullRequestReviewers: (number: number, reviewers: string[]) => TE.TaskEither<Error, void>;
   addPullRequestAssignees: (number: number, assignees: string[]) => TE.TaskEither<Error, void>;
 };
 
 type CreateGitHubRepositoryParams = {
-  rest: ReturnType<typeof getOctokit>['rest'];
+  octokit: ReturnType<typeof getOctokit>;
   name: string;
 };
 
+type GraphPullRequest = {
+  id: string;
+  isInMergeQueue: boolean;
+  isMergeQueueEnabled: boolean;
+  isDraft: boolean;
+  state: string;
+  mergeStateStatus: string;
+  merged: boolean;
+  headRefName: string;
+  autoMergeRequest?: {
+    mergeMethod: string;
+  };
+};
+
+type GraphPullRequestMergeInput = {
+  //authorEmail?: string; Probably should always be token's email
+  //clientMutationId?: string; Unused GraphQL mechanic
+  commitBody?: string;
+  commitHeadline?: string;
+  //expectedHeadOid?: string; Not needed, head is managed by this action
+  mergeMethod?: string;
+  pullRequestId: string;
+};
+
 const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams], GitHubRepository>(
-  async ({ rest, name }) => {
+  async ({ octokit, name }) => {
     const parsed = parseRepositoryName(name);
     if (T.isLeft(parsed)) {
       throw parsed.left;
@@ -105,8 +146,113 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
       repo: parsed.right[1],
     };
 
-    const { data: repo } = await rest.repos.get(defaults);
+    const { data: repo } = await octokit.rest.repos.get(defaults);
     const targetBranch = parsed.right[2] ?? repo.default_branch;
+
+    //--- MERGE SUPPORT START ---
+    const getGraphPullRequest = async (number: number): Promise<GraphPullRequest> => {
+      const {
+        repository: { pullRequest: pr },
+      } = await octokit.graphql<{ repository: { pullRequest: GraphPullRequest } }>(
+        `
+          query($owner: String!, $repo: String!, $number: Int!) {
+            repository(owner: $owner, name: $repo) {
+              pullRequest(number: $number) {
+                id
+                isInMergeQueue
+                isMergeQueueEnabled
+                isDraft
+                state
+                mergeStateStatus
+                merged
+                headRefName
+                autoMergeRequest {
+                  mergeMethod
+                }
+              }
+            }
+          }
+        `,
+        {
+          ...defaults,
+          number,
+        },
+      );
+      return pr;
+    };
+
+    const coerceMergeMode = (mode: MergeMode, gpr: GraphPullRequest): MergeMode => {
+      // Must use auto for merge queue, unless bypassing
+      if (gpr.isMergeQueueEnabled && mode !== 'admin') return 'auto';
+
+      // Always immediate merge if possible
+      const status = gpr.mergeStateStatus;
+      if (status == 'CLEAN' || status == 'HAS_HOOKS' || status == 'UNSTABLE') return 'immediate';
+
+      // Fall back to request
+      return mode;
+    };
+
+    const disablePullRequestAutoMerge = async (id: string) => {
+      await octokit.graphql(
+        `
+          mutation($id: ID!) {
+            disablePullRequestAutoMerge(input: { pullRequestId: $id }) {
+              clientMutationId
+            }
+          }
+        `,
+        {
+          id,
+        },
+      );
+    };
+
+    const canMergePr = (gpr: GraphPullRequest, mode: MergeMode): boolean => {
+      if (gpr.state !== 'OPEN') return false;
+      if (mode === 'auto') return true;
+
+      const blocked = gpr.mergeStateStatus === 'BLOCKED' && mode !== 'admin';
+      const behind = gpr.mergeStateStatus === 'BEHIND' && mode !== 'admin';
+      const dirty = gpr.mergeStateStatus === 'DIRTY';
+
+      return !gpr.isDraft && !blocked && !behind && !dirty;
+    };
+
+    const enableGraphPullRequestAutoMerge = async (gprmi: GraphPullRequestMergeInput) => {
+      await octokit.graphql(
+        `
+          mutation($input: EnablePullRequestAutoMergeInput!) {
+            enablePullRequestAutoMerge(input: $input) {
+              clientMutationId
+            }
+          }
+        `,
+        {
+          input: {
+            ...gprmi,
+          },
+        },
+      );
+    };
+
+    const mergeGraphPullRequest = async (gprmi: GraphPullRequestMergeInput) => {
+      await octokit.graphql(
+        `
+          mutation($input: MergePullRequestInput!) {
+            mergePullRequest(input: $input) {
+              clientMutationId
+            }
+          }
+        `,
+        {
+          input: {
+            ...gprmi,
+          },
+        },
+      );
+    };
+    //--- MERGE SUPPORT END ---
 
     return {
       owner: defaults.owner,
@@ -114,14 +260,14 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
 
       createBranch: TE.tryCatchK(async (name) => {
         // get base branch
-        const { data: base } = await rest.git.getRef({
+        const { data: base } = await octokit.rest.git.getRef({
           ...defaults,
           ref: `heads/${targetBranch}`,
         });
 
         // update exisiting branch
         const updated = await TE.tryCatch(async () => {
-          const { data } = await rest.git.updateRef({
+          const { data } = await octokit.rest.git.updateRef({
             ...defaults,
             ref: `heads/${name}`,
             sha: base.object.sha,
@@ -138,7 +284,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
         }
 
         // create branch
-        const { data: ref } = await rest.git.createRef({
+        const { data: ref } = await octokit.rest.git.createRef({
           ...defaults,
           ref: `refs/heads/${name}`,
           sha: base.object.sha,
@@ -151,7 +297,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
       }, handleErrorReason),
 
       deleteBranch: TE.tryCatchK(async (name) => {
-        await rest.git.deleteRef({
+        await octokit.rest.git.deleteRef({
           ...defaults,
           ref: `heads/${name}`,
         });
@@ -159,7 +305,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
 
       commit: TE.tryCatchK(async ({ parent, branch, files, message, force }) => {
         // create tree
-        const { data: tree } = await rest.git.createTree({
+        const { data: tree } = await octokit.rest.git.createTree({
           ...defaults,
           base_tree: parent,
           tree: files.map((file) => ({
@@ -170,7 +316,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
         });
 
         // commit
-        const { data: commit } = await rest.git.createCommit({
+        const { data: commit } = await octokit.rest.git.createCommit({
           ...defaults,
           tree: tree.sha,
           message,
@@ -178,7 +324,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
         });
 
         // apply to branch
-        await rest.git.updateRef({
+        await octokit.rest.git.updateRef({
           ...defaults,
           ref: `heads/${branch}`,
           sha: commit.sha,
@@ -189,7 +335,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
       }, handleErrorReason),
 
       compareCommits: TE.tryCatchK(async (base, head) => {
-        const { data: diff } = await rest.repos.compareCommits({
+        const { data: diff } = await octokit.rest.repos.compareCommits({
           ...defaults,
           base,
           head,
@@ -199,7 +345,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
       }, handleErrorReason),
 
       findExistingPullRequestByBranch: TE.tryCatchK(async (branch) => {
-        const { data: prs } = await rest.pulls.list({
+        const { data: prs } = await octokit.rest.pulls.list({
           ...defaults,
           state: 'open',
           head: `${defaults.owner}:${branch}`,
@@ -209,7 +355,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
       }, handleErrorReason),
 
       closePullRequest: TE.tryCatchK(async (number) => {
-        await rest.pulls.update({
+        await octokit.rest.pulls.update({
           ...defaults,
           pull_number: number,
           state: 'closed',
@@ -218,7 +364,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
 
       createOrUpdatePullRequest: TE.tryCatchK(async ({ title, body, number, branch }) => {
         if (number !== null && number !== undefined) {
-          const { data } = await rest.pulls.update({
+          const { data } = await octokit.rest.pulls.update({
             ...defaults,
             base: targetBranch,
             pull_number: number,
@@ -227,7 +373,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
           });
           return data;
         } else {
-          const { data } = await rest.pulls.create({
+          const { data } = await octokit.rest.pulls.create({
             ...defaults,
             base: targetBranch,
             head: branch,
@@ -238,8 +384,43 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
         }
       }, handleErrorReason),
 
+      mergePullRequest: TE.tryCatchK(async ({ number, mode, strategy, commitHeadline, commitBody }) => {
+        // Get GraphQl version of PR, as REST version isn't as complete
+        const gpr = await getGraphPullRequest(number);
+
+        // Handle pre-merge checks
+        if (gpr.isInMergeQueue || gpr.merged) return MergeResult.AlreadyHandled;
+
+        mode = coerceMergeMode(mode, gpr);
+        if (gpr.autoMergeRequest) {
+          if (mode === 'auto') {
+            return MergeResult.AlreadyHandled; // Already set to auto
+          } else {
+            await disablePullRequestAutoMerge(gpr.id);
+          }
+        }
+
+        if (!canMergePr(gpr, mode)) return MergeResult.Unmergeable;
+
+        // Merge/Setup auto-merge
+        const mergeInputs: GraphPullRequestMergeInput = {
+          ...(commitBody && { commitBody }),
+          ...(commitHeadline && { commitHeadline }),
+          mergeMethod: strategy.toUpperCase(),
+          pullRequestId: gpr.id,
+        };
+
+        if (mode == 'auto') {
+          await enableGraphPullRequestAutoMerge(mergeInputs);
+          return MergeResult.Prepared;
+        } else {
+          await mergeGraphPullRequest(mergeInputs);
+          return MergeResult.Merged;
+        }
+      }, handleErrorReason),
+
       addPullRequestLabels: TE.tryCatchK(async (number, labels) => {
-        await rest.issues.addLabels({
+        await octokit.rest.issues.addLabels({
           ...defaults,
           issue_number: number,
           labels,
@@ -260,7 +441,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
           [[], []],
         );
 
-        await rest.pulls.requestReviewers({
+        await octokit.rest.pulls.requestReviewers({
           ...defaults,
           pull_number: number,
           reviewers,
@@ -269,7 +450,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
       }, handleErrorReason),
 
       addPullRequestAssignees: TE.tryCatchK(async (number, assignees) => {
-        await rest.issues.addAssignees({
+        await octokit.rest.issues.addAssignees({
           ...defaults,
           issue_number: number,
           assignees: assignees.map((a) => removeAtMark(a)),
@@ -285,14 +466,14 @@ export type GitHub = {
 };
 
 export const createGitHub = (inputs: Inputs): GitHub => {
-  const { rest } = getOctokit(inputs.github_token, {
+  const octokit = getOctokit(inputs.github_token, {
     baseUrl: inputs.github_api_url,
   });
 
   return {
     initializeRepository: TE.tryCatchK(async (name) => {
       const repo = await createGitHubRepository({
-        rest,
+        octokit,
         name,
       })();
       if (T.isLeft(repo)) {

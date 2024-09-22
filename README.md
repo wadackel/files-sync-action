@@ -220,6 +220,11 @@ settings:
     reviewers: []
     assignees: []
     labels: []
+    merge:
+      mode: disabled
+      strategy: merge
+      delete_branch: false
+      commit: ~
 ```
 
 ### `PatternConfig`
@@ -320,15 +325,16 @@ The following template variables are available for various keys:
 
 ### `PullRequestConfig`
 
-| Key         | Required | Type       | Description                                                                                                                                                                                 |
-| :---------- | :------- | :--------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `disabled`  | `false`  | `boolean`  | Flag to disable PR when synchronizing files. If disabled, file synchronization will only push without creating a PR                                                                         |
-| `force`     | `false`  | `boolean`  | Flag to create a commit from **base** of existing PR and override existing commits. If disabled, the commit is created from **head** of existing PR and existing commits are not overridden |
-| `title`     | `false`  | `string`   | Title of the automatically generated PR. Supports [EJS][ejs] templates                                                                                                                      |
-| `body`      | `false`  | `string`   | Content of the automatically generated PR. Supports [EJS][ejs] templates                                                                                                                    |
-| `reviewers` | `false`  | `string[]` | List of reviewers to set for the automatically generated PR. To specify a team as a reviewer, add `team:` as a prefix to the team slug                                                      |
-| `assignees` | `false`  | `string[]` | List of assignees to set for the automatically generated PR. Team assignment is not supported                                                                                               |
-| `labels`    | `false`  | `string[]` | List of labels to set for the automatically generated PR                                                                                                                                    |
+| Key         | Required | Type          | Description                                                                                                                                                                                 |
+| :---------- | :------- | :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `disabled`  | `false`  | `boolean`     | Flag to disable PR when synchronizing files. If disabled, file synchronization will only push without creating a PR                                                                         |
+| `force`     | `false`  | `boolean`     | Flag to create a commit from **base** of existing PR and override existing commits. If disabled, the commit is created from **head** of existing PR and existing commits are not overridden |
+| `title`     | `false`  | `string`      | Title of the automatically generated PR. Supports [EJS][ejs] templates                                                                                                                      |
+| `body`      | `false`  | `string`      | Content of the automatically generated PR. Supports [EJS][ejs] templates                                                                                                                    |
+| `reviewers` | `false`  | `string[]`    | List of reviewers to set for the automatically generated PR. To specify a team as a reviewer, add `team:` as a prefix to the team slug                                                      |
+| `assignees` | `false`  | `string[]`    | List of assignees to set for the automatically generated PR. Team assignment is not supported                                                                                               |
+| `labels`    | `false`  | `string[]`    | List of labels to set for the automatically generated PR                                                                                                                                    |
+| `merge`     | `false`  | [MergeConfig] | Various settings related to merging the automatically generated PR                                                                                                                          |
 
 The following template variables are available for various keys:
 
@@ -352,6 +358,34 @@ The following template variables are available for various keys:
 | `run.url`    | `string`                         | URL of the Workflow execution log                                          |
 | `changes`    | `{ from: string; to: string }[]` | List of changed files                                                      |
 | `index`      | `number`                         | Index of the file synchronization pattern                                  |
+
+### `MergeConfig`
+
+Configure the merge of the automatically generated PR when synchronizing files.
+
+| Key             | Required | Type            | Description                                                                                                                      |
+| :-------------- | :------- | :-------------- | :------------------------------------------------------------------------------------------------------------------------------- |
+| `mode`          | `false`  | [MergeMode]     | The mode under which the PR merge is configured                                                                                  |
+| `strategy`      | `false`  | [MergeStrategy] | The strategy to use for merging the automatically generated PR                                                                   |
+| `delete_branch` | `false`  | `boolean`       | Flag to delete the synchronization branch if the automatically generated PR is successfully merged (ignored if `modw` is 'auto') |
+| `commit`        | `false`  | [CommitConfig]  | Various settings related to merge commits                                                                                        |
+
+### `MergeMode`
+
+| Enumerator  | Description                                                                                                                           |
+| :---------- | :------------------------------------------------------------------------------------------------------------------------------------ |
+| `disabled`  | The PR is not merged                                                                                                                  |
+| `immediate` | If possible, the PR is merged immediately                                                                                             |
+| `auto`      | Same as `immediate`, but the PR is marked as "auto-merge" if it cannot be immediately merged                                          |
+| `admin`     | Same as `immediate`, but PRs that are blocked due to repo policy are forcefully merged if the provided token has permissions to do so |
+
+### `MergeStrategy`
+
+| Enumerator | Description                                                                  |
+| :--------- | :--------------------------------------------------------------------------- |
+| `merge`    | Creates a merge commit                                                       |
+| `rebase`   | Adds all synchronization commits to the target branch without a merge commit |
+| `squash`   | Squashes all synchronization commits into one merge commit                   |
 
 ## Credits
 
@@ -439,4 +473,7 @@ $ pnpm build && node test.js
 [CommitConfig]: #commitconfig
 [BranchConfig]: #branchconfig
 [PullRequestConfig]: #pullrequestconfig
+[MergeConfig]: #mergeconfig
+[MergeMode]: #mergemode
+[MergeStrategy]: #mergestrategy
 [FileConfig]: #fileconfig

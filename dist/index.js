@@ -62059,6 +62059,7 @@ const run = async () => {
                 force: cfg.pull_request.force,
             })();
             if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.isLeft(commit)) {
+                _actions_core__WEBPACK_IMPORTED_MODULE_2__.info('If pushing to .github/workflows, make sure the github token has the "workflow" scope. See: https://github.com/wadackel/files-sync-action?tab=readme-ov-file#authentication');
                 _actions_core__WEBPACK_IMPORTED_MODULE_2__.setFailed(`${id} - ${commit.left.message}`);
                 return 1;
             }

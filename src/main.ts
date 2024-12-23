@@ -210,6 +210,9 @@ const run = async (): Promise<number> => {
         force: cfg.pull_request.force,
       })();
       if (T.isLeft(commit)) {
+        core.info(
+          'If pushing to .github/workflows, make sure the github token has the "workflow" scope. See: https://github.com/wadackel/files-sync-action?tab=readme-ov-file#authentication',
+        );
         core.setFailed(`${id} - ${commit.left.message}`);
         return 1;
       }

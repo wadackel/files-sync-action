@@ -326,11 +326,6 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
           })),
         });
 
-        core.debug(`Files requested for deletion`);
-        deleteFiles.map((file) => {
-          core.debug(`Delete requested for: ${JSON.stringify(file)}`);
-        });
-
         let filesToDelete: CommitDeleteFile[] = [];
         if (deleteFiles.length > 0) {
           // If there are files or directories to delete, we need to ensure
@@ -354,7 +349,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
             core.info('See: https://docs.github.com/en/rest/git/trees?apiVersion=2022-11-28#get-a-tree');
           }
 
-          core.debug(`Listing files present in the tree of the parent commit`);
+          core.debug(`Listing files present in the tree of the parent commit:`);
           originTree.tree.map((treeFile) => {
             core.debug(`Tree file: ${JSON.stringify(treeFile.path)}`);
           });

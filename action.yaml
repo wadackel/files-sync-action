@@ -1,5 +1,5 @@
-name: 'Files Sync'
-description: 'A customizable action that synchronizes files across multiple repositories. Fork supporting files and folders deletion.'
+name: 'Files Sync and Delete'
+description: 'A customizable action that synchronizes files across multiple repositories. A fork if "Files Sync" supporting deletion of files and folders.'
 author: 'wadackel'
 branding:
   color: white

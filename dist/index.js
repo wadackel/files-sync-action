@@ -61707,6 +61707,10 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.try
                     content: file.content,
                 })),
             });
+            _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug(`Files requested for deletion`);
+            deleteFiles.map((file) => {
+                _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug(`Delete requested for: ${JSON.stringify(file)}`);
+            });
             let filesToDelete = [];
             if (deleteFiles.length > 0) {
                 // If there are files or directories to delete, we need to ensure
@@ -61724,9 +61728,14 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.try
                     _actions_core__WEBPACK_IMPORTED_MODULE_0__.info('The limit for the tree array is 100,000 entries with a maximum size of 7 MB when using the recursive parameter. ');
                     _actions_core__WEBPACK_IMPORTED_MODULE_0__.info('See: https://docs.github.com/en/rest/git/trees?apiVersion=2022-11-28#get-a-tree');
                 }
+                _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug(`Listing files present in the tree of the parent commit`);
+                originTree.tree.map((treeFile) => {
+                    _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug(`Tree file: ${JSON.stringify(treeFile.path)}`);
+                });
                 filesToDelete = originTree.tree.reduce((acc, treeFile) => {
                     const fileToDelete = deleteFiles.find((f) => f.path === treeFile.path);
                     if (fileToDelete !== undefined) {
+                        _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Delete: file: ${fileToDelete.path} is present and will be deleted`);
                         acc.push(fileToDelete);
                     }
                     return acc;

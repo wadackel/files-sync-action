@@ -348,9 +348,15 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
             );
             core.info('See: https://docs.github.com/en/rest/git/trees?apiVersion=2022-11-28#get-a-tree');
           }
+
+          originTree.tree.map((treeFile) => {
+            console.log(treeFile.path);
+          });
+
           filesToDelete = originTree.tree.reduce((acc: CommitDeleteFile[], treeFile) => {
             const fileToDelete = deleteFiles.find((f) => f.path === treeFile.path);
             if (fileToDelete !== undefined) {
+              core.info(`Delete: file: ${fileToDelete.path} is present and will be deleted`);
               acc.push(fileToDelete);
             }
             return acc;

@@ -1,3 +1,4 @@
+import * as core from '@actions/core';
 import * as T from 'fp-ts/Either';
 import * as TE from 'fp-ts/TaskEither';
 import { getOctokit } from '@actions/github';
@@ -53,7 +54,16 @@ export type CommitFile = {
   content: string;
 };
 
+export type CommitDeleteFile = {
+  path?: string;
+  mode: CommitFileMode;
+  type: 'blob' | 'tree' | 'commit';
+  sha: null | string;
+  content?: string;
+};
+
 export type CommitDiffEntry = {
+  status: string;
   filename: string;
 };
 
@@ -61,6 +71,7 @@ export type GitHubRepositoryCommitParams = {
   parent: string;
   branch: string;
   files: CommitFile[];
+  deleteFiles: CommitDeleteFile[];
   message: string;
   force: boolean;
 };
@@ -303,7 +314,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
         });
       }, handleErrorReason),
 
-      commit: TE.tryCatchK(async ({ parent, branch, files, message, force }) => {
+      commit: TE.tryCatchK(async ({ parent, branch, files, deleteFiles, message, force }) => {
         // create tree
         const { data: tree } = await octokit.rest.git.createTree({
           ...defaults,
@@ -315,10 +326,58 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
           })),
         });
 
+        let filesToDelete: CommitDeleteFile[] = [];
+        if (deleteFiles.length > 0) {
+          // If there are files or directories to delete, we need to ensure
+          // these files are actually present in the tree. If not present,
+          // they should be removed to avoid the following error:
+          // HttpError: GitRPC::BadObjectState
+
+          // Get the entire tree of the parent commit
+          const { data: originTree } = await octokit.rest.git.getTree({
+            ...defaults,
+            recursive: 'true',
+            tree_sha: parent,
+          });
+          if (originTree.truncated) {
+            core.info(
+              'The tree in the requested repository was truncated due to size. This may cause issues with the deletion of files.',
+            );
+            core.info(
+              'The limit for the tree array is 100,000 entries with a maximum size of 7 MB when using the recursive parameter. ',
+            );
+            core.info('See: https://docs.github.com/en/rest/git/trees?apiVersion=2022-11-28#get-a-tree');
+          }
+          filesToDelete = originTree.tree.reduce((acc: CommitDeleteFile[], treeFile) => {
+            const fileToDelete = deleteFiles.find((f) => f.path === treeFile.path);
+            if (fileToDelete !== undefined) {
+              acc.push(fileToDelete);
+            }
+            return acc;
+          }, []);
+        }
+
+        const updatedTreeItems = tree.tree.reduce((acc: CommitDeleteFile[], treeFile) => {
+          if (acc.length === 0) {
+            acc = [...filesToDelete];
+          }
+          const fileToDelete = filesToDelete.find((f) => f.path === treeFile.path);
+          if (fileToDelete === undefined) {
+            acc.push(treeFile as CommitDeleteFile);
+          }
+          return acc;
+        }, []);
+
+        const { data: newTree } = await octokit.rest.git.createTree({
+          ...defaults,
+          base_tree: tree.sha,
+          tree: updatedTreeItems,
+        });
+
         // commit
         const { data: commit } = await octokit.rest.git.createCommit({
           ...defaults,
-          tree: tree.sha,
+          tree: newTree.sha,
           message,
           parents: [parent],
         });

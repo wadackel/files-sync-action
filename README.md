@@ -231,14 +231,15 @@ settings:
 
 Configure the synchronization pattern for files and directories and the target repositories for synchronization. While inheriting the contents defined in `settings`, you can customize the commit, branch, and PR settings for each synchronization pattern.
 
-| Key            | Required | Type                          | Description                                                                                           |
-| :------------- | :------- | :---------------------------- | :---------------------------------------------------------------------------------------------------- |
-| `files`        | `true`   | Array<string \| [FileConfig]> | List of files to synchronize. Supports files and directories.                                         |
-| `repositories` | `true`   | Array<string>                 | List of repositories (optionally with target branches) to synchronize the files specified in `files`. |
-| `commit`       | `false`  | [CommitConfig]                | Various settings related to commits                                                                   |
-| `branch`       | `false`  | [BranchConfig]                | Various settings related to branches                                                                  |
-| `pull_request` | `false`  | [PullRequestConfig]           | Various settings related to automatically generated PRs                                               |
-| `template`     | `false`  | Record<string, any>           | Template variables to use for the files specified in `files`. Disables [EJS][ejs] if not specified    |
+| Key            | Required | Type                                | Description                                                                                           |
+| :------------- | :------- | :---------------------------------- | :---------------------------------------------------------------------------------------------------- |
+| `files`        | `true`   | Array<string \| [FileConfig]>       | List of files to synchronize. Supports files and directories.                                         |
+| `delete_files` | `true`   | Array<string \| [DeleteFileConfig]> | List of files or directories to delete from repositories the specified repositories.                  |
+| `repositories` | `true`   | Array<string>                       | List of repositories (optionally with target branches) to synchronize the files specified in `files`. |
+| `commit`       | `false`  | [CommitConfig]                      | Various settings related to commits                                                                   |
+| `branch`       | `false`  | [BranchConfig]                      | Various settings related to branches                                                                  |
+| `pull_request` | `false`  | [PullRequestConfig]                 | Various settings related to automatically generated PRs                                               |
+| `template`     | `false`  | Record<string, any>                 | Template variables to use for the files specified in `files`. Disables [EJS][ejs] if not specified    |
 
 **Examples:**
 
@@ -275,6 +276,15 @@ Configure the details of the files to synchronize. When synchronizing a director
 | `from`    | `true`   | `string`   | Source file or directory path for synchronization                                                                                           |
 | `to`      | `true`   | `string`   | Destination file or directory path for synchronization                                                                                      |
 | `exclude` | `false`  | `string[]` | Glob patterns of files to exclude from the contents of a directory (only valid for directories). Glob patterns use [micromatch][micromatch] |
+
+### `DeleteFileConfig`
+
+Configure the details of the files to delete.
+
+| Key    | Required | Type     | Description                                                      |
+| :----- | :------- | :------- | :--------------------------------------------------------------- |
+| `path` | `true`   | `string` | Path to the element to delete in the target repository           |
+| `type` | `true`   | `string` | Indicate whether the file to delete is a `directory` or a `file` |
 
 ### `CommitConfig`
 

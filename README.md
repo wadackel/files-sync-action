@@ -33,6 +33,7 @@ The following links are the actual PR and Workflow execution result logs:
 - :hammer_and_wrench: Support flexible configuration of reviewers and labels for PRs
 - :checkered_flag: Supports stable file synchronization even in large repositories.
 - :pencil: Support file customization using [EJS][ejs]
+- :recycle: Supports the deletion of files and folders
 
 ## Usage
 
@@ -102,6 +103,10 @@ patterns:
       - .prettierrc.json
       - from: workflows/ci.yaml
         to: .github/workflows/ci.yaml
+    delete_files:
+      - a-file-to-delete.md
+      - path: a/folder/to/delete
+        type: directory
     repositories:
       - owner/repo1
       - owner/repo2@target_branch
@@ -280,6 +285,8 @@ Configure the details of the files to synchronize. When synchronizing a director
 ### `DeleteFileConfig`
 
 Configure the details of the files to delete.
+
+When a string is provided (no path neither type), the implementation assumes the path is a file.
 
 | Key    | Required | Type     | Description                                                      |
 | :----- | :------- | :------- | :--------------------------------------------------------------- |

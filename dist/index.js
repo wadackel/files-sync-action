@@ -61716,7 +61716,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.try
                 // Get the entire tree of the parent commit
                 const { data: originTree } = await octokit.rest.git.getTree({
                     ...defaults,
-                    recursive: "true",
+                    recursive: 'true',
                     tree_sha: parent,
                 });
                 if (originTree.truncated) {
@@ -62053,18 +62053,20 @@ const run = async () => {
         }
         // Commit to repository
         _actions_core__WEBPACK_IMPORTED_MODULE_2__.info(`Synchronize ${files.right.length} files:`);
-        const deleteFiles = entry.delete_files !== undefined ? entry.delete_files.map((f) => {
-            const deleteFile = typeof f === 'string'
-                ? {
-                    ..._constants_js__WEBPACK_IMPORTED_MODULE_7__/* .defaultDeleteFile */ .pb,
-                    path: f,
-                    type: 'file',
-                }
-                : {
-                    ...f,
-                };
-            return deleteFile;
-        }) : [];
+        const deleteFiles = entry.delete_files !== undefined
+            ? entry.delete_files.map((f) => {
+                const deleteFile = typeof f === 'string'
+                    ? {
+                        ..._constants_js__WEBPACK_IMPORTED_MODULE_7__/* .defaultDeleteFile */ .pb,
+                        path: f,
+                        type: 'file',
+                    }
+                    : {
+                        ...f,
+                    };
+                return deleteFile;
+            })
+            : [];
         for (const deleteFile of deleteFiles) {
             _actions_core__WEBPACK_IMPORTED_MODULE_2__.debug(`  - delete "${deleteFile.path}" of type "${deleteFile.type}"`);
         }
@@ -62187,12 +62189,16 @@ const run = async () => {
                         number: _constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_RUN_NUMBER */ .$H,
                         url: `${_constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_SERVER */ .WL}/${_constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_REPOSITORY */ .Xf}/actions/runs/${_constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_RUN_ID */ .oR}`,
                     },
-                    changes: diff.right.filter((d) => d.status !== 'removed').map((d) => ({
+                    changes: diff.right
+                        .filter((d) => d.status !== 'removed')
+                        .map((d) => ({
                         from: files.right.find((f) => f.to === d.filename)?.from,
                         to: d.filename,
                     })),
-                    deleted: diff.right.filter((d) => d.status === 'removed').map((d) => ({
-                        path: d.filename
+                    deleted: diff.right
+                        .filter((d) => d.status === 'removed')
+                        .map((d) => ({
+                        path: d.filename,
                     })),
                     index: i,
                 }),

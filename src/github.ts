@@ -350,7 +350,7 @@ const createGitHubRepository = TE.tryCatchK<Error, [CreateGitHubRepositoryParams
           }
 
           originTree.tree.map((treeFile) => {
-            console.log(treeFile.path);
+            core.info(`Tree file: ${JSON.stringify(treeFile.path)}`);
           });
 
           filesToDelete = originTree.tree.reduce((acc: CommitDeleteFile[], treeFile) => {

@@ -15,7 +15,7 @@ jobs:
   build_and_test:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.3.0
 
       - uses: ./.github/actions/setup-node
 
@@ -54,7 +54,7 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@v4.3.0
         with:
           fetch-depth: 0
           persist-credentials: false

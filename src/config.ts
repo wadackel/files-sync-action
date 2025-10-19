@@ -111,7 +111,7 @@ export const loadConfig = TE.tryCatchK(
         return await fs.readFile(path.join(parts.dir, parts.name + ext), 'utf8');
       }
     })();
-    const yaml = YAML.parse(raw);
+    const yaml = YAML.parse(raw) as unknown;
     return configSchema.parse(yaml);
   },
   (reason) => {

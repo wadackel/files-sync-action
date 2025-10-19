@@ -47,8 +47,8 @@
     "fp-ts": "^2.13.1",
     "micromatch": "^4.0.5",
     "yaml": "^2.2.1",
-    "zod": "^3.21.4",
-    "zod-error": "^1.5.0"
+    "zod": "^4.1.12",
+    "zod-validation-error": "^4.0.2"
   },
   "devDependencies": {
     "@commitlint/cli": "19.6.0",

@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import * as TE from 'fp-ts/TaskEither';
 import * as YAML from 'yaml';
 import { ZodError, z } from 'zod';
-import { generateErrorMessage } from 'zod-error';
+import { fromZodError } from 'zod-validation-error';
 
 // Schema
 export const commitConfigSchema = z
@@ -124,20 +124,11 @@ export const loadConfig = TE.tryCatchK(
   (reason) => {
     if (reason instanceof ZodError) {
       return new Error(
-        generateErrorMessage(reason.issues, {
-          code: {
-            enabled: false,
-          },
-          message: {
-            enabled: true,
-            label: '',
-          },
-          path: {
-            enabled: true,
-            type: 'objectNotation',
-            label: '',
-          },
-        }),
+        fromZodError(reason, {
+          includePath: true,
+          prefixSeparator: '\n',
+          issueSeparator: '\n',
+        }).message,
       );
     } else {
       return new Error(String(reason));

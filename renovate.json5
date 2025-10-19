@@ -1,0 +1,49 @@
+{
+  // Renovate configuration
+  // See: https://docs.renovatebot.com/configuration-options/
+
+  extends: [
+    'config:js-lib',
+    'group:typescript-eslintMonorepo',
+    'group:commitlintMonorepo',
+    'group:definitelyTyped', // @types/* packages
+    'group:allNonMajor', // Group all patch/minor updates
+    ':semanticCommits',
+    ':semanticCommitTypeAll(chore)',
+    ':semanticCommitScopeDisabled',
+  ],
+
+  labels: ['A-dependencies'],
+  rebaseLabel: 'S-needs-rebase',
+
+  // Wait 7 days before creating PRs (aligned with pnpm-workspace.yaml)
+  minimumReleaseAge: 10080, // 7 days = 10080 minutes
+
+  prConcurrentLimit: 0,
+
+  packageRules: [
+    // GitHub Actions packages
+    {
+      groupName: 'GitHub Actions packages',
+      matchPackagePatterns: ['^@actions/'],
+    },
+
+    // semantic-release ecosystem
+    {
+      groupName: 'semantic-release packages',
+      matchPackagePatterns: ['^@semantic-release/', '^semantic-release'],
+    },
+
+    // prettier ecosystem
+    {
+      groupName: 'prettier packages',
+      matchPackagePatterns: ['^prettier'],
+    },
+
+    // Oxlint ecosystem
+    {
+      groupName: 'Oxlint packages',
+      matchPackagePatterns: ['^oxlint'],
+    },
+  ],
+}

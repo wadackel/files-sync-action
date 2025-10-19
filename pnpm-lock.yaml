@@ -73,8 +73,8 @@ importers:
         specifier: 8.0.0
         version: 8.0.0
       gha-docgen:
-        specifier: 1.0.1
-        version: 1.0.1
+        specifier: 1.0.4
+        version: 1.0.4
       lint-staged:
         specifier: 15.2.10
         version: 15.2.10
@@ -1130,15 +1130,6 @@ packages:
     resolution: {integrity: sha512-wAV9QHOsNbwnWdNW2FYvE1P56wtgSbM+3SZcdGiWQILwVjACCXDCI3Ai8QlCjMDB8YK5zySiXZYBiwGmNY3lnw==}
     engines: {node: '>=12'}
 
-  debug@4.3.4:
-    resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
-    engines: {node: '>=6.0'}
-    peerDependencies:
-      supports-color: '*'
-    peerDependenciesMeta:
-      supports-color:
-        optional: true
-
   debug@4.3.6:
     resolution: {integrity: sha512-O/09Bd4Z1fBrU4VzkhFqVgpPzaGbw6Sm9FEkBT1A/YBXQFGuuSxa1dN2nxgxS34JmKXqYx8CZAwEVoJFImUXIg==}
     engines: {node: '>=6.0'}
@@ -1392,8 +1383,8 @@ packages:
   get-tsconfig@4.7.6:
     resolution: {integrity: sha512-ZAqrLlu18NbDdRaHq+AKXzAmqIUPswPWKUchfytdAjiRFnCe5ojG2bstg6mRiZabkKfCoL/e98pbBELIV/YCeA==}
 
-  gha-docgen@1.0.1:
-    resolution: {integrity: sha512-UrGQWwzlrBXZGwWfnInyQtQAtguNUhfYDVx7qpqZlXac1+Gi5y79IZw+5UKGj7TRD+TYDvVPWXUiyrI8Wp7r3g==}
+  gha-docgen@1.0.4:
+    resolution: {integrity: sha512-BMrhI4X6vtANPnOsszNF3h7Ij2gPJ/5uS2VryIl6kFGYuzAAiJ5Gi+27FQjEXKF/aztDQyVbdHcxMh6Zo8nCRg==}
     hasBin: true
 
   git-hooks-list@3.1.0:
@@ -3610,10 +3601,6 @@ snapshots:
 
   dargs@8.1.0: {}
 
-  debug@4.3.4:
-    dependencies:
-      ms: 2.1.2
-
   debug@4.3.6:
     dependencies:
       ms: 2.1.2
@@ -3885,11 +3872,11 @@ snapshots:
     dependencies:
       resolve-pkg-maps: 1.0.0
 
-  gha-docgen@1.0.1:
+  gha-docgen@1.0.4:
     dependencies:
-      debug: 4.3.4
+      debug: 4.4.0
       meow: 11.0.0
-      yaml: 2.2.1
+      yaml: 2.5.0
       zod: 3.21.4
       zod-error: 1.5.0
     transitivePeerDependencies:

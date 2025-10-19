@@ -12,7 +12,7 @@
     "lint": "oxlint",
     "prepare": "lefthook install",
     "release": "semantic-release",
-    "test": "vitest",
+    "test": "vitest run",
     "test:watch": "pnpm test --watch",
     "typecheck": "tsc --skipLibCheck",
     "typecheck//": "See https://github.com/vitejs/vite/issues/11552"
@@ -75,7 +75,7 @@
     "tsx": "4.19.2",
     "type-fest": "4.30.0",
     "typescript": "5.9.3",
-    "vitest": "2.1.8"
+    "vitest": "^3.2.4"
   },
   "packageManager": "pnpm@10.18.3"
 }

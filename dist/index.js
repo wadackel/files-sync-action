@@ -62046,7 +62046,7 @@ const run = async () => {
                         content,
                     };
                 }));
-            }, (reason) => new Error(`${id} - File resolve error: ${reason}`));
+            }, (reason) => new Error(`${id} - File resolve error: ${String(reason)}`));
         }), fp_ts_Array__WEBPACK_IMPORTED_MODULE_14__.sequence(fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_13__.ApplicativePar), fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_13__.map(fp_ts_Array__WEBPACK_IMPORTED_MODULE_14__.flatten))();
         if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.isLeft(files)) {
             _actions_core__WEBPACK_IMPORTED_MODULE_2__.setFailed(files.left.message);

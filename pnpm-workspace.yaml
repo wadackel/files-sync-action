@@ -1,0 +1,5 @@
+onlyBuiltDependencies:
+  - lefthook
+
+# 7 days = 10080 minutes
+minimumReleaseAge: 10080

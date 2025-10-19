@@ -3,44 +3,24 @@
   "type": "module",
   "scripts": {
     "build": "ncc build src/main.ts --source-map --license licenses.txt",
-    "typecheck//": "See https://github.com/vitejs/vite/issues/11552",
-    "typecheck": "tsc --skipLibCheck",
-    "lint": "eslint .",
-    "test": "vitest",
-    "test:watch": "pnpm run test --watch",
-    "format": "run-s format:*",
+    "format": "oxlint --fix && prettier --write .",
+    "format:lint": "oxlint --fix",
     "format:prettier": "prettier --write .",
-    "format:eslint": "pnpm lint --fix",
-    "generate": "run-s generate:* format",
-    "generate:inputs": "tsx ./scripts/generate-inputs.ts",
+    "generate": "pnpm generate:inputs && pnpm generate:docs && pnpm format",
     "generate:docs": "gha-docgen",
+    "generate:inputs": "tsx ./scripts/generate-inputs.ts",
+    "lint": "oxlint",
+    "prepare": "lefthook install",
     "release": "semantic-release",
-    "prepare": "simple-git-hooks"
-  },
-  "simple-git-hooks": {
-    "pre-commit": "npx lint-staged",
-    "commit-msg": "npx --no -- commitlint --edit ${1}",
-    "preserveUnused": true
+    "test": "vitest",
+    "test:watch": "pnpm test --watch",
+    "typecheck": "tsc --skipLibCheck",
+    "typecheck//": "See https://github.com/vitejs/vite/issues/11552"
   },
   "commitlint": {
     "extends": [
       "@commitlint/config-conventional"
     ]
-  },
-  "lint-staged": {
-    "*.{js,ts,tsx,md,yaml,json}": "prettier --write"
-  },
-  "prettier": {
-    "arrowParens": "always",
-    "plugins": [
-      "prettier-plugin-packagejson"
-    ],
-    "printWidth": 120,
-    "semi": true,
-    "singleQuote": true,
-    "tabWidth": 2,
-    "trailingComma": "all",
-    "useTabs": false
   },
   "release": {
     "branches": [
@@ -73,36 +53,29 @@
   "devDependencies": {
     "@commitlint/cli": "19.6.0",
     "@commitlint/config-conventional": "19.6.0",
-    "@eslint/js": "9.10.0",
     "@semantic-release/commit-analyzer": "13.0.0",
     "@semantic-release/github": "11.0.1",
     "@semantic-release/release-notes-generator": "14.0.1",
     "@types/ejs": "3.1.5",
-    "@types/eslint__js": "8.42.3",
     "@types/is-base64": "1.1.3",
     "@types/micromatch": "4.0.9",
     "@types/node": "20.17.9",
     "@vercel/ncc": "0.38.1",
     "conventional-changelog-conventionalcommits": "8.0.0",
-    "eslint": "9.10.0",
-    "eslint-config-prettier": "9.1.0",
-    "eslint-plugin-import": "2.31.0",
-    "gha-docgen": "1.0.1",
-    "globals": "15.13.0",
-    "lint-staged": "15.2.10",
-    "npm-run-all2": "6.2.6",
-    "prettier": "3.4.2",
-    "prettier-plugin-packagejson": "2.5.6",
+    "gha-docgen": "2.0.0",
+    "lefthook": "1.13.6",
+    "oxlint": "1.22.0",
+    "oxlint-tsgolint": "0.2.0",
+    "prettier": "3.6.2",
+    "prettier-plugin-packagejson": "2.5.19",
     "semantic-release": "24.2.0",
     "semantic-release-major-tag": "0.3.2",
-    "simple-git-hooks": "2.11.1",
     "ts-dedent": "2.2.0",
     "ts-morph": "23.0.0",
     "tsx": "4.19.2",
     "type-fest": "4.30.0",
-    "typescript": "5.7.2",
-    "typescript-eslint": "8.6.0",
+    "typescript": "5.9.3",
     "vitest": "2.1.8"
   },
-  "packageManager": "pnpm@9.14.4"
+  "packageManager": "pnpm@10.18.3"
 }

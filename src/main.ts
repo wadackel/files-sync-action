@@ -121,7 +121,7 @@ const run = async (): Promise<number> => {
               }),
             );
           },
-          (reason) => new Error(`${id} - File resolve error: ${reason}`),
+          (reason) => new Error(`${id} - File resolve error: ${String(reason)}`),
         );
       }),
       A.sequence(TE.ApplicativePar),

@@ -3,18 +3,19 @@
   "type": "module",
   "scripts": {
     "build": "ncc build src/main.ts --source-map --license licenses.txt",
-    "typecheck//": "See https://github.com/vitejs/vite/issues/11552",
-    "typecheck": "tsc --skipLibCheck",
-    "lint": "oxlint",
-    "test": "vitest",
-    "test:watch": "pnpm run test --watch",
-    "format": "run-s format:*",
+    "format": "oxlint --fix && prettier --write .",
+    "format:lint": "oxlint --fix",
     "format:prettier": "prettier --write .",
-    "generate": "run-s generate:* format",
-    "generate:inputs": "tsx ./scripts/generate-inputs.ts",
+    "generate": "pnpm generate:inputs && pnpm generate:docs && pnpm format",
     "generate:docs": "gha-docgen",
+    "generate:inputs": "tsx ./scripts/generate-inputs.ts",
+    "lint": "oxlint",
+    "prepare": "lefthook install",
     "release": "semantic-release",
-    "prepare": "lefthook install"
+    "test": "vitest",
+    "test:watch": "pnpm test --watch",
+    "typecheck": "tsc --skipLibCheck",
+    "typecheck//": "See https://github.com/vitejs/vite/issues/11552"
   },
   "commitlint": {
     "extends": [
@@ -63,7 +64,6 @@
     "conventional-changelog-conventionalcommits": "8.0.0",
     "gha-docgen": "2.0.0",
     "lefthook": "1.13.6",
-    "npm-run-all2": "6.2.6",
     "oxlint": "1.22.0",
     "oxlint-tsgolint": "0.2.0",
     "prettier": "3.6.2",

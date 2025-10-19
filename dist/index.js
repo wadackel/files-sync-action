@@ -57352,7 +57352,7 @@ __nccwpck_require__.d(__webpack_exports__, {
   "ME": () => (/* binding */ loadConfig)
 });
 
-// UNUSED EXPORTS: MergeMode, MergeStrategy, branchConfigSchema, commitConfigSchema, configSchema, fileConfigSchema, mergeConfigSchema, patternConfigSchema, pullRequestConfigSchema, settingsConfigSchema, templateConfigSchema
+// UNUSED EXPORTS: MergeMode, MergeStrategy, branchConfigSchema, commitConfigSchema, configSchema, deleteFileConfigSchema, fileConfigSchema, mergeConfigSchema, patternConfigSchema, pullRequestConfigSchema, settingsConfigSchema, templateConfigSchema
 
 // EXTERNAL MODULE: external "node:fs/promises"
 var promises_ = __nccwpck_require__(3977);
@@ -61369,9 +61369,14 @@ const fileConfigSchema = z.object({
     to: z.string(),
     exclude: z.array(z.string()).optional(),
 });
+const deleteFileConfigSchema = z.object({
+    path: z.string(),
+    type: z["enum"](['file', 'directory']),
+});
 const templateConfigSchema = z.record(z.string(), z.any());
 const patternConfigSchema = z.object({
     files: z.array(z.union([z.string(), fileConfigSchema])),
+    delete_files: z.array(z.union([z.string(), deleteFileConfigSchema])).optional(),
     repositories: z.array(z.string()),
     commit: commitConfigSchema.optional(),
     branch: branchConfigSchema.optional(),
@@ -61443,6 +61448,7 @@ const loadConfig = TaskEither.tryCatchK(async (filepath) => {
 /* harmony export */   "g$": () => (/* binding */ GH_WORKFLOW),
 /* harmony export */   "jR": () => (/* binding */ PR_FOOTER),
 /* harmony export */   "oR": () => (/* binding */ GH_RUN_ID),
+/* harmony export */   "pb": () => (/* binding */ defaultDeleteFile),
 /* harmony export */   "w2": () => (/* binding */ defaultFile)
 /* harmony export */ });
 const GH_SERVER = process.env['GITHUB_SERVER_URL'] ?? '';
@@ -61483,10 +61489,16 @@ This PR contains the following updates:
 
 ---
 
-### Changed Files
+### Modified Files
 
 <%_ for (const file of changes) { -%>
 - <% if (file.from === file.to) { %>\`<%- file.to %>\`<% } else { %>\`<%- file.from %>\` to \`<%- file.to %>\`<% }%>
+<%_ } -%>
+
+### Deleted Files
+
+<%_ for (const file of deleted) { -%>
+- \`<%- file.path %>\`
 <%_ } -%>
     `.trim(),
         reviewers: [],
@@ -61503,6 +61515,9 @@ This PR contains the following updates:
 const defaultFile = {
     exclude: [],
 };
+const defaultDeleteFile = {
+    type: 'file',
+};
 
 
 /***/ }),
@@ -61514,12 +61529,15 @@ const defaultFile = {
 /* harmony export */   "n": () => (/* binding */ createGitHub),
 /* harmony export */   "z": () => (/* binding */ MergeResult)
 /* harmony export */ });
-/* harmony import */ var fp_ts_Either__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(9813);
-/* harmony import */ var fp_ts_Either__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__nccwpck_require__.n(fp_ts_Either__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(6370);
-/* harmony import */ var fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__nccwpck_require__.n(fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__);
-/* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(5942);
-/* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__nccwpck_require__.n(_actions_github__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(431);
+/* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__nccwpck_require__.n(_actions_core__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var fp_ts_Either__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(9813);
+/* harmony import */ var fp_ts_Either__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__nccwpck_require__.n(fp_ts_Either__WEBPACK_IMPORTED_MODULE_2__);
+/* harmony import */ var fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(6370);
+/* harmony import */ var fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__nccwpck_require__.n(fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__);
+/* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(5942);
+/* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__nccwpck_require__.n(_actions_github__WEBPACK_IMPORTED_MODULE_1__);
+
 
 
 
@@ -61529,9 +61547,9 @@ const parseRepositoryName = (name) => {
     const [fullName = '', branch] = name.split('@');
     const [owner, repo] = fullName.split('/');
     if (!owner || !repo) {
-        return fp_ts_Either__WEBPACK_IMPORTED_MODULE_1__.left(new Error(`Repository name must be in the "owner/repo" format. ("${name}" is an invalid format)`));
+        return fp_ts_Either__WEBPACK_IMPORTED_MODULE_2__.left(new Error(`Repository name must be in the "owner/repo" format. ("${name}" is an invalid format)`));
     }
-    return fp_ts_Either__WEBPACK_IMPORTED_MODULE_1__.right([owner, repo, branch]);
+    return fp_ts_Either__WEBPACK_IMPORTED_MODULE_2__.right([owner, repo, branch]);
 };
 var MergeResult;
 (function (MergeResult) {
@@ -61540,9 +61558,9 @@ var MergeResult;
     MergeResult["Prepared"] = "The pull request was set to auto-merge.";
     MergeResult["Merged"] = "The pull request was merged.";
 })(MergeResult || (MergeResult = {}));
-const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async ({ octokit, name }) => {
+const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.tryCatchK(async ({ octokit, name }) => {
     const parsed = parseRepositoryName(name);
-    if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_1__.isLeft(parsed)) {
+    if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_2__.isLeft(parsed)) {
         throw parsed.left;
     }
     const defaults = {
@@ -61639,14 +61657,14 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
     return {
         owner: defaults.owner,
         name: defaults.repo,
-        createBranch: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (name) => {
+        createBranch: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.tryCatchK(async (name) => {
             // get base branch
             const { data: base } = await octokit.rest.git.getRef({
                 ...defaults,
                 ref: `heads/${targetBranch}`,
             });
             // update exisiting branch
-            const updated = await fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatch(async () => {
+            const updated = await fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.tryCatch(async () => {
                 const { data } = await octokit.rest.git.updateRef({
                     ...defaults,
                     ref: `heads/${name}`,
@@ -61655,7 +61673,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                 });
                 return data;
             }, handleErrorReason)();
-            if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_1__.isRight(updated)) {
+            if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_2__.isRight(updated)) {
                 return {
                     name,
                     sha: updated.right.object.sha,
@@ -61672,13 +61690,13 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                 sha: ref.object.sha,
             };
         }, handleErrorReason),
-        deleteBranch: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (name) => {
+        deleteBranch: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.tryCatchK(async (name) => {
             await octokit.rest.git.deleteRef({
                 ...defaults,
                 ref: `heads/${name}`,
             });
         }, handleErrorReason),
-        commit: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async ({ parent, branch, files, message, force }) => {
+        commit: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.tryCatchK(async ({ parent, branch, files, deleteFiles, message, force }) => {
             // create tree
             const { data: tree } = await octokit.rest.git.createTree({
                 ...defaults,
@@ -61689,10 +61707,55 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                     content: file.content,
                 })),
             });
+            let filesToDelete = [];
+            if (deleteFiles.length > 0) {
+                // If there are files or directories to delete, we need to ensure
+                // these files are actually present in the tree. If not present,
+                // they should be removed to avoid the following error:
+                // HttpError: GitRPC::BadObjectState
+                // Get the entire tree of the parent commit
+                const { data: originTree } = await octokit.rest.git.getTree({
+                    ...defaults,
+                    recursive: 'true',
+                    tree_sha: parent,
+                });
+                if (originTree.truncated) {
+                    _actions_core__WEBPACK_IMPORTED_MODULE_0__.info('The tree in the requested repository was truncated due to size. This may cause issues with the deletion of files.');
+                    _actions_core__WEBPACK_IMPORTED_MODULE_0__.info('The limit for the tree array is 100,000 entries with a maximum size of 7 MB when using the recursive parameter. ');
+                    _actions_core__WEBPACK_IMPORTED_MODULE_0__.info('See: https://docs.github.com/en/rest/git/trees?apiVersion=2022-11-28#get-a-tree');
+                }
+                _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug(`Listing files present in the tree of the parent commit:`);
+                originTree.tree.map((treeFile) => {
+                    _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug(`Tree file: ${JSON.stringify(treeFile.path)}`);
+                });
+                filesToDelete = originTree.tree.reduce((acc, treeFile) => {
+                    const fileToDelete = deleteFiles.find((f) => f.path === treeFile.path);
+                    if (fileToDelete !== undefined) {
+                        _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Delete: file: ${fileToDelete.path} is present and will be deleted`);
+                        acc.push(fileToDelete);
+                    }
+                    return acc;
+                }, []);
+            }
+            const updatedTreeItems = tree.tree.reduce((acc, treeFile) => {
+                if (acc.length === 0) {
+                    acc = [...filesToDelete];
+                }
+                const fileToDelete = filesToDelete.find((f) => f.path === treeFile.path);
+                if (fileToDelete === undefined) {
+                    acc.push(treeFile);
+                }
+                return acc;
+            }, []);
+            const { data: newTree } = await octokit.rest.git.createTree({
+                ...defaults,
+                base_tree: tree.sha,
+                tree: updatedTreeItems,
+            });
             // commit
             const { data: commit } = await octokit.rest.git.createCommit({
                 ...defaults,
-                tree: tree.sha,
+                tree: newTree.sha,
                 message,
                 parents: [parent],
             });
@@ -61705,7 +61768,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
             });
             return commit;
         }, handleErrorReason),
-        compareCommits: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (base, head) => {
+        compareCommits: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.tryCatchK(async (base, head) => {
             const { data: diff } = await octokit.rest.repos.compareCommits({
                 ...defaults,
                 base,
@@ -61713,7 +61776,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
             });
             return diff.files;
         }, handleErrorReason),
-        findExistingPullRequestByBranch: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (branch) => {
+        findExistingPullRequestByBranch: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.tryCatchK(async (branch) => {
             const { data: prs } = await octokit.rest.pulls.list({
                 ...defaults,
                 state: 'open',
@@ -61721,14 +61784,14 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
             });
             return prs[0] ?? null;
         }, handleErrorReason),
-        closePullRequest: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (number) => {
+        closePullRequest: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.tryCatchK(async (number) => {
             await octokit.rest.pulls.update({
                 ...defaults,
                 pull_number: number,
                 state: 'closed',
             });
         }, handleErrorReason),
-        createOrUpdatePullRequest: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async ({ title, body, number, branch }) => {
+        createOrUpdatePullRequest: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.tryCatchK(async ({ title, body, number, branch }) => {
             if (number !== null && number !== undefined) {
                 const { data } = await octokit.rest.pulls.update({
                     ...defaults,
@@ -61750,7 +61813,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                 return data;
             }
         }, handleErrorReason),
-        mergePullRequest: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async ({ number, mode, strategy, commitHeadline, commitBody }) => {
+        mergePullRequest: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.tryCatchK(async ({ number, mode, strategy, commitHeadline, commitBody }) => {
             // Get GraphQl version of PR, as REST version isn't as complete
             const gpr = await getGraphPullRequest(number);
             // Handle pre-merge checks
@@ -61783,14 +61846,14 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                 return MergeResult.Merged;
             }
         }, handleErrorReason),
-        addPullRequestLabels: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (number, labels) => {
+        addPullRequestLabels: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.tryCatchK(async (number, labels) => {
             await octokit.rest.issues.addLabels({
                 ...defaults,
                 issue_number: number,
                 labels,
             });
         }, handleErrorReason),
-        addPullRequestReviewers: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (number, original) => {
+        addPullRequestReviewers: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.tryCatchK(async (number, original) => {
             const [reviewers, team_reviewers] = original.reduce((acc, cur) => {
                 const match = cur.match(/^team:(.+)$/);
                 if (match !== null) {
@@ -61808,7 +61871,7 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
                 team_reviewers,
             });
         }, handleErrorReason),
-        addPullRequestAssignees: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (number, assignees) => {
+        addPullRequestAssignees: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.tryCatchK(async (number, assignees) => {
             await octokit.rest.issues.addAssignees({
                 ...defaults,
                 issue_number: number,
@@ -61818,16 +61881,16 @@ const createGitHubRepository = fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.try
     };
 }, handleErrorReason);
 const createGitHub = (inputs) => {
-    const octokit = (0,_actions_github__WEBPACK_IMPORTED_MODULE_0__.getOctokit)(inputs.github_token, {
+    const octokit = (0,_actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit)(inputs.github_token, {
         baseUrl: inputs.github_api_url,
     });
     return {
-        initializeRepository: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_2__.tryCatchK(async (name) => {
+        initializeRepository: fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_3__.tryCatchK(async (name) => {
             const repo = await createGitHubRepository({
                 octokit,
                 name,
             })();
-            if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_1__.isLeft(repo)) {
+            if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_2__.isLeft(repo)) {
                 throw repo.left;
             }
             return repo.right;
@@ -61995,6 +62058,23 @@ const run = async () => {
         }
         // Commit to repository
         _actions_core__WEBPACK_IMPORTED_MODULE_2__.info(`Synchronize ${files.right.length} files:`);
+        const deleteFiles = entry.delete_files !== undefined
+            ? entry.delete_files.map((f) => {
+                const deleteFile = typeof f === 'string'
+                    ? {
+                        ..._constants_js__WEBPACK_IMPORTED_MODULE_7__/* .defaultDeleteFile */ .pb,
+                        path: f,
+                        type: 'file',
+                    }
+                    : {
+                        ...f,
+                    };
+                return deleteFile;
+            })
+            : [];
+        for (const deleteFile of deleteFiles) {
+            _actions_core__WEBPACK_IMPORTED_MODULE_2__.debug(`  - delete "${deleteFile.path}" of type "${deleteFile.type}"`);
+        }
         for (const name of entry.repositories) {
             _actions_core__WEBPACK_IMPORTED_MODULE_2__.info('	');
             const id = `patterns.${i} ${name}`;
@@ -62056,9 +62136,16 @@ const run = async () => {
                     mode: file.mode,
                     content: file.content,
                 })),
+                deleteFiles: deleteFiles.map((deleteFile) => ({
+                    path: deleteFile.path,
+                    mode: deleteFile.type === 'directory' ? '040000' : '100644',
+                    type: deleteFile.type === 'directory' ? 'tree' : 'blob',
+                    sha: null,
+                })),
                 force: cfg.pull_request.force,
             })();
             if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.isLeft(commit)) {
+                _actions_core__WEBPACK_IMPORTED_MODULE_2__.info('If pushing to .github/workflows, make sure the github token has the "workflow" scope. See: https://github.com/wadackel/files-sync-action?tab=readme-ov-file#authentication');
                 _actions_core__WEBPACK_IMPORTED_MODULE_2__.setFailed(`${id} - ${commit.left.message}`);
                 return 1;
             }
@@ -62107,9 +62194,16 @@ const run = async () => {
                         number: _constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_RUN_NUMBER */ .$H,
                         url: `${_constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_SERVER */ .WL}/${_constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_REPOSITORY */ .Xf}/actions/runs/${_constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_RUN_ID */ .oR}`,
                     },
-                    changes: diff.right.map((d) => ({
+                    changes: diff.right
+                        .filter((d) => d.status !== 'removed')
+                        .map((d) => ({
                         from: files.right.find((f) => f.to === d.filename)?.from,
                         to: d.filename,
+                    })),
+                    deleted: diff.right
+                        .filter((d) => d.status === 'removed')
+                        .map((d) => ({
+                        path: d.filename,
                     })),
                     index: i,
                 }),

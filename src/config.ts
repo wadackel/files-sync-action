@@ -69,11 +69,18 @@ export const fileConfigSchema = z.object({
 });
 export type FileConfig = z.infer<typeof fileConfigSchema>;
 
+export const deleteFileConfigSchema = z.object({
+  path: z.string(),
+  type: z.enum(['file', 'directory']),
+});
+export type DeleteFileConfig = z.infer<typeof deleteFileConfigSchema>;
+
 export const templateConfigSchema = z.record(z.string(), z.any());
 export type TemplateConfig = z.infer<typeof templateConfigSchema>;
 
 export const patternConfigSchema = z.object({
   files: z.array(z.union([z.string(), fileConfigSchema])),
+  delete_files: z.array(z.union([z.string(), deleteFileConfigSchema])).optional(),
   repositories: z.array(z.string()),
   commit: commitConfigSchema.optional(),
   branch: branchConfigSchema.optional(),

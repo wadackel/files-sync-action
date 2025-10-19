@@ -38,10 +38,16 @@ This PR contains the following updates:
 
 ---
 
-### Changed Files
+### Modified Files
 
 <%_ for (const file of changes) { -%>
 - <% if (file.from === file.to) { %>\`<%- file.to %>\`<% } else { %>\`<%- file.from %>\` to \`<%- file.to %>\`<% }%>
+<%_ } -%>
+
+### Deleted Files
+
+<%_ for (const file of deleted) { -%>
+- \`<%- file.path %>\`
 <%_ } -%>
     `.trim(),
     reviewers: [] as string[],
@@ -58,4 +64,8 @@ This PR contains the following updates:
 
 export const defaultFile = {
   exclude: [] as string[],
+};
+
+export const defaultDeleteFile = {
+  type: 'file' as string,
 };

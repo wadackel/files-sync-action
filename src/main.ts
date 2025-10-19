@@ -18,6 +18,7 @@ import {
   PR_FOOTER,
   defaultEntryConfig,
   defaultFile,
+  defaultDeleteFile,
 } from './constants.js';
 import { createGitHub, MergeResult } from './github.js';
 import { getInputs } from './inputs.js';
@@ -140,6 +141,27 @@ const run = async (): Promise<number> => {
     // Commit to repository
     core.info(`Synchronize ${files.right.length} files:`);
 
+    const deleteFiles =
+      entry.delete_files !== undefined
+        ? entry.delete_files.map((f) => {
+            const deleteFile =
+              typeof f === 'string'
+                ? {
+                    ...defaultDeleteFile,
+                    path: f,
+                    type: 'file',
+                  }
+                : {
+                    ...f,
+                  };
+            return deleteFile;
+          })
+        : [];
+
+    for (const deleteFile of deleteFiles) {
+      core.debug(`  - delete "${deleteFile.path}" of type "${deleteFile.type}"`);
+    }
+
     for (const name of entry.repositories) {
       core.info('	');
 
@@ -207,9 +229,18 @@ const run = async (): Promise<number> => {
           mode: file.mode,
           content: file.content,
         })),
+        deleteFiles: deleteFiles.map((deleteFile) => ({
+          path: deleteFile.path,
+          mode: deleteFile.type === 'directory' ? '040000' : '100644',
+          type: deleteFile.type === 'directory' ? 'tree' : 'blob',
+          sha: null,
+        })),
         force: cfg.pull_request.force,
       })();
       if (T.isLeft(commit)) {
+        core.info(
+          'If pushing to .github/workflows, make sure the github token has the "workflow" scope. See: https://github.com/wadackel/files-sync-action?tab=readme-ov-file#authentication',
+        );
         core.setFailed(`${id} - ${commit.left.message}`);
         return 1;
       }
@@ -266,10 +297,17 @@ const run = async (): Promise<number> => {
             number: GH_RUN_NUMBER,
             url: `${GH_SERVER}/${GH_REPOSITORY}/actions/runs/${GH_RUN_ID}`,
           },
-          changes: diff.right.map((d) => ({
-            from: files.right.find((f) => f.to === d.filename)?.from,
-            to: d.filename,
-          })),
+          changes: diff.right
+            .filter((d) => d.status !== 'removed')
+            .map((d) => ({
+              from: files.right.find((f) => f.to === d.filename)?.from,
+              to: d.filename,
+            })),
+          deleted: diff.right
+            .filter((d) => d.status === 'removed')
+            .map((d) => ({
+              path: d.filename,
+            })),
           index: i,
         }),
         branch,

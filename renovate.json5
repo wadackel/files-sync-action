@@ -17,7 +17,7 @@
   rebaseLabel: 'S-needs-rebase',
 
   // Wait 7 days before creating PRs (aligned with pnpm-workspace.yaml)
-  minimumReleaseAge: 10080, // 7 days = 10080 minutes
+  minimumReleaseAge: '7 days',
 
   prConcurrentLimit: 0,
 

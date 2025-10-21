@@ -61,7 +61,7 @@
     "@types/micromatch": "4.0.9",
     "@types/node": "20.19.21",
     "@vercel/ncc": "0.38.4",
-    "conventional-changelog-conventionalcommits": "8.0.0",
+    "conventional-changelog-conventionalcommits": "9.1.0",
     "gha-docgen": "2.0.0",
     "lefthook": "1.13.6",
     "oxlint": "1.22.0",

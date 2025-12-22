@@ -63,7 +63,7 @@
     "@vercel/ncc": "0.38.4",
     "conventional-changelog-conventionalcommits": "8.0.0",
     "gha-docgen": "2.0.0",
-    "lefthook": "1.13.6",
+    "lefthook": "2.0.12",
     "oxlint": "1.22.0",
     "oxlint-tsgolint": "0.2.0",
     "prettier": "3.6.2",

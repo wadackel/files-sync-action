@@ -210,14 +210,20 @@ settings:
 
       | :chart_with_upwards_trend: Change | :hammer_and_wrench: Synchronizing Repository | :link: Workflow |
       | :-- | :-- | :-- |
-      | <%- changes.length %> files | [<%- repository %>](<%- github %>/<%- repository %>) | [\`<%- workflow %>#<%- run.number %>\`](<%- run.url %>) |
+      | <%- changes.length %> files | [<%- repository %>](<%- github %>/<%- repository %>) | [`<%- workflow %>#<%- run.number %>`](<%- run.url %>) |
 
       ---
 
-      ### Changed Files
+      ### Modified Files
 
       <%_ for (const file of changes) { -%>
-      - <% if (file.from === file.to) { %>\`<%- file.to %>\`<% } else { %>\`<%- file.from %>\` to \`<%- file.to %>\`<% }%>
+      - <% if (file.from === file.to) { %>`<%- file.to %>`<% } else { %>`<%- file.from %>` to `<%- file.to %>`<% }%>
+      <%_ } -%>
+
+      ### Deleted Files
+
+      <%_ for (const file of deleted) { -%>
+      - `<%- file.path %>`
       <%_ } -%>
     reviewers: []
     assignees: []
@@ -226,7 +232,7 @@ settings:
       mode: disabled
       strategy: merge
       delete_branch: false
-      commit: ~
+      commit: {}
 ```
 
 ### `PatternConfig`

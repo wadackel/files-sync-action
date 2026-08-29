@@ -376,8 +376,11 @@ The following template variables are available for various keys:
 | `run.id`     | `string`                         | Execution ID of the Workflow                                               |
 | `run.number` | `string`                         | Execution number of the Workflow                                           |
 | `run.url`    | `string`                         | URL of the Workflow execution log                                          |
-| `changes`    | `{ from: string; to: string }[]` | List of changed files                                                      |
+| `changes`    | `{ from: string; to: string }[]` | List of added or modified files. Deleted paths are not included here       |
+| `deleted`    | `{ path: string }[]`             | List of paths removed by `delete_files`                                    |
 | `index`      | `number`                         | Index of the file synchronization pattern                                  |
+
+A footer crediting `files-sync-action` is appended to the rendered body. It cannot be disabled.
 
 ### `MergeConfig`
 
@@ -389,6 +392,26 @@ Configure the merge of the automatically generated PR when synchronizing files.
 | `strategy`      | `false`  | [MergeStrategy] | The strategy to use for merging the automatically generated PR                                                                   |
 | `delete_branch` | `false`  | `boolean`       | Flag to delete the synchronization branch if the automatically generated PR is successfully merged (ignored if `mode` is 'auto') |
 | `commit`        | `false`  | [CommitConfig]  | Various settings related to merge commits                                                                                        |
+
+Templating runs only when `merge.commit.format` is set. Omit it and the merge uses the commit message GitHub generates by default, ignoring `prefix` and `subject`. Unlike [`CommitConfig`][CommitConfig], `merge.commit.prefix` and `merge.commit.subject` have no defaults and render as empty strings when unset.
+
+The rendered message is split at the first line break: the first line becomes the merge commit headline and the remainder becomes its body.
+
+#### `merge.commit.format`
+
+| Key          | Type     | Description                                                                |
+| :----------- | :------- | :------------------------------------------------------------------------- |
+| `prefix`     | `string` | Merge commit message prefix specified in `merge.commit.prefix`             |
+| `subject`    | `string` | Merge commit message subject specified in `merge.commit.subject`           |
+| `repository` | `string` | Source repository name (the repository where the Action is being executed) |
+| `index`      | `number` | Index of the file synchronization pattern                                  |
+
+#### `merge.commit.subject`
+
+| Key          | Type     | Description                                                                |
+| :----------- | :------- | :------------------------------------------------------------------------- |
+| `repository` | `string` | Source repository name (the repository where the Action is being executed) |
+| `index`      | `number` | Index of the file synchronization pattern                                  |
 
 ### `MergeMode`
 

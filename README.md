@@ -33,6 +33,8 @@ The following link is the actual PR produced by a synchronization run:
 - :checkered_flag: Supports stable file synchronization even in large repositories.
 - :pencil: Support file customization using [EJS][ejs]
 - :recycle: Supports the deletion of files and folders
+- :twisted_rightwards_arrows: Supports merging the generated PRs automatically
+- :dart: Supports synchronizing to a target branch per repository
 
 ## Usage
 
@@ -51,7 +53,7 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: wadackel/files-sync-action@v4
         with:
           github_token: ${{ secrets.GH_FILES_SYNC_TOKEN }}
@@ -71,10 +73,10 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Generate token
         id: generate_token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
@@ -125,7 +127,7 @@ To use `files-sync-action`, you need to set the following `Repository permission
 | :---------------- | :------------------------------------------------------------------ |
 | **Contents**      | `Read and write`                                                    |
 | **Pull requests** | `Read and write`                                                    |
-| **Metadata**      | `Read and write`                                                    |
+| **Metadata**      | `Read-only` (granted automatically)                                 |
 | **Workflows**     | To synchronize Workflow files: `Read and write`, Other: `No access` |
 
 ## Inputs
@@ -275,6 +277,33 @@ patterns:
         - 'login_name'
       labels:
         - 'A-build'
+```
+
+#### `template`
+
+`template` is a `PatternConfig` key and cannot be placed under `settings`. When it is omitted, file contents are copied verbatim and no [EJS][ejs] rendering happens at all.
+
+The variables defined here are passed to every file in the same pattern:
+
+```yaml
+patterns:
+  - files:
+      - from: .github/fixtures/README.md
+        to: README.md
+    repositories:
+      - owner/repo1
+    template:
+      repository:
+        name: 'wadackel/files-sync-action'
+        url: 'https://github.com/wadackel/files-sync-action'
+```
+
+The source file references them as it would in any EJS template:
+
+```markdown
+This is a repository for verifying the operation of `<%- repository.name %>`.
+
+Please refer to the [documentation](<%- repository.url %>) for details on the Action.
 ```
 
 ### `FileConfig`

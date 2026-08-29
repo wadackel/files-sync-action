@@ -2674,1222 +2674,6 @@ exports.flatten = (...args) => {
 
 /***/ }),
 
-/***/ 8192:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-/*
- * EJS Embedded JavaScript templates
- * Copyright 2112 Matthew Eernisse (mde@fleegix.org)
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
-*/
-
-
-
-/**
- * @file Embedded JavaScript templating engine. {@link http://ejs.co}
- * @author Matthew Eernisse <mde@fleegix.org>
- * @author Tiancheng "Timothy" Gu <timothygu99@gmail.com>
- * @project EJS
- * @license {@link http://www.apache.org/licenses/LICENSE-2.0 Apache License, Version 2.0}
- */
-
-/**
- * EJS internal functions.
- *
- * Technically this "module" lies in the same file as {@link module:ejs}, for
- * the sake of organization all the private functions re grouped into this
- * module.
- *
- * @module ejs-internal
- * @private
- */
-
-/**
- * Embedded JavaScript templating engine.
- *
- * @module ejs
- * @public
- */
-
-
-var fs = __nccwpck_require__(9896);
-var path = __nccwpck_require__(6928);
-var utils = __nccwpck_require__(9061);
-
-var scopeOptionWarned = false;
-/** @type {string} */
-var _VERSION_STRING = (__nccwpck_require__(2025)/* .version */ .rE);
-var _DEFAULT_OPEN_DELIMITER = '<';
-var _DEFAULT_CLOSE_DELIMITER = '>';
-var _DEFAULT_DELIMITER = '%';
-var _DEFAULT_LOCALS_NAME = 'locals';
-var _NAME = 'ejs';
-var _REGEX_STRING = '(<%%|%%>|<%=|<%-|<%_|<%#|<%|%>|-%>|_%>)';
-var _OPTS_PASSABLE_WITH_DATA = ['delimiter', 'scope', 'context', 'debug', 'compileDebug',
-  'client', '_with', 'rmWhitespace', 'strict', 'filename', 'async'];
-// We don't allow 'cache' option to be passed in the data obj for
-// the normal `render` call, but this is where Express 2 & 3 put it
-// so we make an exception for `renderFile`
-var _OPTS_PASSABLE_WITH_DATA_EXPRESS = _OPTS_PASSABLE_WITH_DATA.concat('cache');
-var _BOM = /^\uFEFF/;
-var _JS_IDENTIFIER = /^[a-zA-Z_$][0-9a-zA-Z_$]*$/;
-
-/**
- * EJS template function cache. This can be a LRU object from lru-cache NPM
- * module. By default, it is {@link module:utils.cache}, a simple in-process
- * cache that grows continuously.
- *
- * @type {Cache}
- */
-
-exports.cache = utils.cache;
-
-/**
- * Custom file loader. Useful for template preprocessing or restricting access
- * to a certain part of the filesystem.
- *
- * @type {fileLoader}
- */
-
-exports.fileLoader = fs.readFileSync;
-
-/**
- * Name of the object containing the locals.
- *
- * This variable is overridden by {@link Options}`.localsName` if it is not
- * `undefined`.
- *
- * @type {String}
- * @public
- */
-
-exports.localsName = _DEFAULT_LOCALS_NAME;
-
-/**
- * Promise implementation -- defaults to the native implementation if available
- * This is mostly just for testability
- *
- * @type {PromiseConstructorLike}
- * @public
- */
-
-exports.promiseImpl = (new Function('return this;'))().Promise;
-
-/**
- * Get the path to the included file from the parent file path and the
- * specified path.
- *
- * @param {String}  name     specified path
- * @param {String}  filename parent file path
- * @param {Boolean} [isDir=false] whether the parent file path is a directory
- * @return {String}
- */
-exports.resolveInclude = function(name, filename, isDir) {
-  var dirname = path.dirname;
-  var extname = path.extname;
-  var resolve = path.resolve;
-  var includePath = resolve(isDir ? filename : dirname(filename), name);
-  var ext = extname(name);
-  if (!ext) {
-    includePath += '.ejs';
-  }
-  return includePath;
-};
-
-/**
- * Try to resolve file path on multiple directories
- *
- * @param  {String}        name  specified path
- * @param  {Array<String>} paths list of possible parent directory paths
- * @return {String}
- */
-function resolvePaths(name, paths) {
-  var filePath;
-  if (paths.some(function (v) {
-    filePath = exports.resolveInclude(name, v, true);
-    return fs.existsSync(filePath);
-  })) {
-    return filePath;
-  }
-}
-
-/**
- * Get the path to the included file by Options
- *
- * @param  {String}  path    specified path
- * @param  {Options} options compilation options
- * @return {String}
- */
-function getIncludePath(path, options) {
-  var includePath;
-  var filePath;
-  var views = options.views;
-  var match = /^[A-Za-z]+:\\|^\//.exec(path);
-
-  // Abs path
-  if (match && match.length) {
-    path = path.replace(/^\/*/, '');
-    if (Array.isArray(options.root)) {
-      includePath = resolvePaths(path, options.root);
-    } else {
-      includePath = exports.resolveInclude(path, options.root || '/', true);
-    }
-  }
-  // Relative paths
-  else {
-    // Look relative to a passed filename first
-    if (options.filename) {
-      filePath = exports.resolveInclude(path, options.filename);
-      if (fs.existsSync(filePath)) {
-        includePath = filePath;
-      }
-    }
-    // Then look in any views directories
-    if (!includePath && Array.isArray(views)) {
-      includePath = resolvePaths(path, views);
-    }
-    if (!includePath && typeof options.includer !== 'function') {
-      throw new Error('Could not find the include file "' +
-          options.escapeFunction(path) + '"');
-    }
-  }
-  return includePath;
-}
-
-/**
- * Get the template from a string or a file, either compiled on-the-fly or
- * read from cache (if enabled), and cache the template if needed.
- *
- * If `template` is not set, the file specified in `options.filename` will be
- * read.
- *
- * If `options.cache` is true, this function reads the file from
- * `options.filename` so it must be set prior to calling this function.
- *
- * @memberof module:ejs-internal
- * @param {Options} options   compilation options
- * @param {String} [template] template source
- * @return {(TemplateFunction|ClientFunction)}
- * Depending on the value of `options.client`, either type might be returned.
- * @static
- */
-
-function handleCache(options, template) {
-  var func;
-  var filename = options.filename;
-  var hasTemplate = arguments.length > 1;
-
-  if (options.cache) {
-    if (!filename) {
-      throw new Error('cache option requires a filename');
-    }
-    func = exports.cache.get(filename);
-    if (func) {
-      return func;
-    }
-    if (!hasTemplate) {
-      template = fileLoader(filename).toString().replace(_BOM, '');
-    }
-  }
-  else if (!hasTemplate) {
-    // istanbul ignore if: should not happen at all
-    if (!filename) {
-      throw new Error('Internal EJS error: no file name or template '
-                    + 'provided');
-    }
-    template = fileLoader(filename).toString().replace(_BOM, '');
-  }
-  func = exports.compile(template, options);
-  if (options.cache) {
-    exports.cache.set(filename, func);
-  }
-  return func;
-}
-
-/**
- * Try calling handleCache with the given options and data and call the
- * callback with the result. If an error occurs, call the callback with
- * the error. Used by renderFile().
- *
- * @memberof module:ejs-internal
- * @param {Options} options    compilation options
- * @param {Object} data        template data
- * @param {RenderFileCallback} cb callback
- * @static
- */
-
-function tryHandleCache(options, data, cb) {
-  var result;
-  if (!cb) {
-    if (typeof exports.promiseImpl == 'function') {
-      return new exports.promiseImpl(function (resolve, reject) {
-        try {
-          result = handleCache(options)(data);
-          resolve(result);
-        }
-        catch (err) {
-          reject(err);
-        }
-      });
-    }
-    else {
-      throw new Error('Please provide a callback function');
-    }
-  }
-  else {
-    try {
-      result = handleCache(options)(data);
-    }
-    catch (err) {
-      return cb(err);
-    }
-
-    cb(null, result);
-  }
-}
-
-/**
- * fileLoader is independent
- *
- * @param {String} filePath ejs file path.
- * @return {String} The contents of the specified file.
- * @static
- */
-
-function fileLoader(filePath){
-  return exports.fileLoader(filePath);
-}
-
-/**
- * Get the template function.
- *
- * If `options.cache` is `true`, then the template is cached.
- *
- * @memberof module:ejs-internal
- * @param {String}  path    path for the specified file
- * @param {Options} options compilation options
- * @return {(TemplateFunction|ClientFunction)}
- * Depending on the value of `options.client`, either type might be returned
- * @static
- */
-
-function includeFile(path, options) {
-  var opts = utils.shallowCopy(utils.createNullProtoObjWherePossible(), options);
-  opts.filename = getIncludePath(path, opts);
-  if (typeof options.includer === 'function') {
-    var includerResult = options.includer(path, opts.filename);
-    if (includerResult) {
-      if (includerResult.filename) {
-        opts.filename = includerResult.filename;
-      }
-      if (includerResult.template) {
-        return handleCache(opts, includerResult.template);
-      }
-    }
-  }
-  return handleCache(opts);
-}
-
-/**
- * Re-throw the given `err` in context to the `str` of ejs, `filename`, and
- * `lineno`.
- *
- * @implements {RethrowCallback}
- * @memberof module:ejs-internal
- * @param {Error}  err      Error object
- * @param {String} str      EJS source
- * @param {String} flnm     file name of the EJS file
- * @param {Number} lineno   line number of the error
- * @param {EscapeCallback} esc
- * @static
- */
-
-function rethrow(err, str, flnm, lineno, esc) {
-  var lines = str.split('\n');
-  var start = Math.max(lineno - 3, 0);
-  var end = Math.min(lines.length, lineno + 3);
-  var filename = esc(flnm);
-  // Error context
-  var context = lines.slice(start, end).map(function (line, i){
-    var curr = i + start + 1;
-    return (curr == lineno ? ' >> ' : '    ')
-      + curr
-      + '| '
-      + line;
-  }).join('\n');
-
-  // Alter exception message
-  err.path = filename;
-  err.message = (filename || 'ejs') + ':'
-    + lineno + '\n'
-    + context + '\n\n'
-    + err.message;
-
-  throw err;
-}
-
-function stripSemi(str){
-  return str.replace(/;(\s*$)/, '$1');
-}
-
-/**
- * Compile the given `str` of ejs into a template function.
- *
- * @param {String}  template EJS template
- *
- * @param {Options} [opts] compilation options
- *
- * @return {(TemplateFunction|ClientFunction)}
- * Depending on the value of `opts.client`, either type might be returned.
- * Note that the return type of the function also depends on the value of `opts.async`.
- * @public
- */
-
-exports.compile = function compile(template, opts) {
-  var templ;
-
-  // v1 compat
-  // 'scope' is 'context'
-  // FIXME: Remove this in a future version
-  if (opts && opts.scope) {
-    if (!scopeOptionWarned){
-      console.warn('`scope` option is deprecated and will be removed in EJS 3');
-      scopeOptionWarned = true;
-    }
-    if (!opts.context) {
-      opts.context = opts.scope;
-    }
-    delete opts.scope;
-  }
-  templ = new Template(template, opts);
-  return templ.compile();
-};
-
-/**
- * Render the given `template` of ejs.
- *
- * If you would like to include options but not data, you need to explicitly
- * call this function with `data` being an empty object or `null`.
- *
- * @param {String}   template EJS template
- * @param {Object}  [data={}] template data
- * @param {Options} [opts={}] compilation and rendering options
- * @return {(String|Promise<String>)}
- * Return value type depends on `opts.async`.
- * @public
- */
-
-exports.render = function (template, d, o) {
-  var data = d || utils.createNullProtoObjWherePossible();
-  var opts = o || utils.createNullProtoObjWherePossible();
-
-  // No options object -- if there are optiony names
-  // in the data, copy them to options
-  if (arguments.length == 2) {
-    utils.shallowCopyFromList(opts, data, _OPTS_PASSABLE_WITH_DATA);
-  }
-
-  return handleCache(opts, template)(data);
-};
-
-/**
- * Render an EJS file at the given `path` and callback `cb(err, str)`.
- *
- * If you would like to include options but not data, you need to explicitly
- * call this function with `data` being an empty object or `null`.
- *
- * @param {String}             path     path to the EJS file
- * @param {Object}            [data={}] template data
- * @param {Options}           [opts={}] compilation and rendering options
- * @param {RenderFileCallback} cb callback
- * @public
- */
-
-exports.renderFile = function () {
-  var args = Array.prototype.slice.call(arguments);
-  var filename = args.shift();
-  var cb;
-  var opts = {filename: filename};
-  var data;
-  var viewOpts;
-
-  // Do we have a callback?
-  if (typeof arguments[arguments.length - 1] == 'function') {
-    cb = args.pop();
-  }
-  // Do we have data/opts?
-  if (args.length) {
-    // Should always have data obj
-    data = args.shift();
-    // Normal passed opts (data obj + opts obj)
-    if (args.length) {
-      // Use shallowCopy so we don't pollute passed in opts obj with new vals
-      utils.shallowCopy(opts, args.pop());
-    }
-    // Special casing for Express (settings + opts-in-data)
-    else {
-      // Express 3 and 4
-      if (data.settings) {
-        // Pull a few things from known locations
-        if (data.settings.views) {
-          opts.views = data.settings.views;
-        }
-        if (data.settings['view cache']) {
-          opts.cache = true;
-        }
-        // Undocumented after Express 2, but still usable, esp. for
-        // items that are unsafe to be passed along with data, like `root`
-        viewOpts = data.settings['view options'];
-        if (viewOpts) {
-          utils.shallowCopy(opts, viewOpts);
-        }
-      }
-      // Express 2 and lower, values set in app.locals, or people who just
-      // want to pass options in their data. NOTE: These values will override
-      // anything previously set in settings  or settings['view options']
-      utils.shallowCopyFromList(opts, data, _OPTS_PASSABLE_WITH_DATA_EXPRESS);
-    }
-    opts.filename = filename;
-  }
-  else {
-    data = utils.createNullProtoObjWherePossible();
-  }
-
-  return tryHandleCache(opts, data, cb);
-};
-
-/**
- * Clear intermediate JavaScript cache. Calls {@link Cache#reset}.
- * @public
- */
-
-/**
- * EJS template class
- * @public
- */
-exports.Template = Template;
-
-exports.clearCache = function () {
-  exports.cache.reset();
-};
-
-function Template(text, optsParam) {
-  var opts = utils.hasOwnOnlyObject(optsParam);
-  var options = utils.createNullProtoObjWherePossible();
-  this.templateText = text;
-  /** @type {string | null} */
-  this.mode = null;
-  this.truncate = false;
-  this.currentLine = 1;
-  this.source = '';
-  options.client = opts.client || false;
-  options.escapeFunction = opts.escape || opts.escapeFunction || utils.escapeXML;
-  options.compileDebug = opts.compileDebug !== false;
-  options.debug = !!opts.debug;
-  options.filename = opts.filename;
-  options.openDelimiter = opts.openDelimiter || exports.openDelimiter || _DEFAULT_OPEN_DELIMITER;
-  options.closeDelimiter = opts.closeDelimiter || exports.closeDelimiter || _DEFAULT_CLOSE_DELIMITER;
-  options.delimiter = opts.delimiter || exports.delimiter || _DEFAULT_DELIMITER;
-  options.strict = opts.strict || false;
-  options.context = opts.context;
-  options.cache = opts.cache || false;
-  options.rmWhitespace = opts.rmWhitespace;
-  options.root = opts.root;
-  options.includer = opts.includer;
-  options.outputFunctionName = opts.outputFunctionName;
-  options.localsName = opts.localsName || exports.localsName || _DEFAULT_LOCALS_NAME;
-  options.views = opts.views;
-  options.async = opts.async;
-  options.destructuredLocals = opts.destructuredLocals;
-  options.legacyInclude = typeof opts.legacyInclude != 'undefined' ? !!opts.legacyInclude : true;
-
-  if (options.strict) {
-    options._with = false;
-  }
-  else {
-    options._with = typeof opts._with != 'undefined' ? opts._with : true;
-  }
-
-  this.opts = options;
-
-  this.regex = this.createRegex();
-}
-
-Template.modes = {
-  EVAL: 'eval',
-  ESCAPED: 'escaped',
-  RAW: 'raw',
-  COMMENT: 'comment',
-  LITERAL: 'literal'
-};
-
-Template.prototype = {
-  createRegex: function () {
-    var str = _REGEX_STRING;
-    var delim = utils.escapeRegExpChars(this.opts.delimiter);
-    var open = utils.escapeRegExpChars(this.opts.openDelimiter);
-    var close = utils.escapeRegExpChars(this.opts.closeDelimiter);
-    str = str.replace(/%/g, delim)
-      .replace(/</g, open)
-      .replace(/>/g, close);
-    return new RegExp(str);
-  },
-
-  compile: function () {
-    /** @type {string} */
-    var src;
-    /** @type {ClientFunction} */
-    var fn;
-    var opts = this.opts;
-    var prepended = '';
-    var appended = '';
-    /** @type {EscapeCallback} */
-    var escapeFn = opts.escapeFunction;
-    /** @type {FunctionConstructor} */
-    var ctor;
-    /** @type {string} */
-    var sanitizedFilename = opts.filename ? JSON.stringify(opts.filename) : 'undefined';
-
-    if (!this.source) {
-      this.generateSource();
-      prepended +=
-        '  var __output = "";\n' +
-        '  function __append(s) { if (s !== undefined && s !== null) __output += s }\n';
-      if (opts.outputFunctionName) {
-        if (!_JS_IDENTIFIER.test(opts.outputFunctionName)) {
-          throw new Error('outputFunctionName is not a valid JS identifier.');
-        }
-        prepended += '  var ' + opts.outputFunctionName + ' = __append;' + '\n';
-      }
-      if (opts.localsName && !_JS_IDENTIFIER.test(opts.localsName)) {
-        throw new Error('localsName is not a valid JS identifier.');
-      }
-      if (opts.destructuredLocals && opts.destructuredLocals.length) {
-        var destructuring = '  var __locals = (' + opts.localsName + ' || {}),\n';
-        for (var i = 0; i < opts.destructuredLocals.length; i++) {
-          var name = opts.destructuredLocals[i];
-          if (!_JS_IDENTIFIER.test(name)) {
-            throw new Error('destructuredLocals[' + i + '] is not a valid JS identifier.');
-          }
-          if (i > 0) {
-            destructuring += ',\n  ';
-          }
-          destructuring += name + ' = __locals.' + name;
-        }
-        prepended += destructuring + ';\n';
-      }
-      if (opts._with !== false) {
-        prepended +=  '  with (' + opts.localsName + ' || {}) {' + '\n';
-        appended += '  }' + '\n';
-      }
-      appended += '  return __output;' + '\n';
-      this.source = prepended + this.source + appended;
-    }
-
-    if (opts.compileDebug) {
-      src = 'var __line = 1' + '\n'
-        + '  , __lines = ' + JSON.stringify(this.templateText) + '\n'
-        + '  , __filename = ' + sanitizedFilename + ';' + '\n'
-        + 'try {' + '\n'
-        + this.source
-        + '} catch (e) {' + '\n'
-        + '  rethrow(e, __lines, __filename, __line, escapeFn);' + '\n'
-        + '}' + '\n';
-    }
-    else {
-      src = this.source;
-    }
-
-    if (opts.client) {
-      src = 'escapeFn = escapeFn || ' + escapeFn.toString() + ';' + '\n' + src;
-      if (opts.compileDebug) {
-        src = 'rethrow = rethrow || ' + rethrow.toString() + ';' + '\n' + src;
-      }
-    }
-
-    if (opts.strict) {
-      src = '"use strict";\n' + src;
-    }
-    if (opts.debug) {
-      console.log(src);
-    }
-    if (opts.compileDebug && opts.filename) {
-      src = src + '\n'
-        + '//# sourceURL=' + sanitizedFilename + '\n';
-    }
-
-    try {
-      if (opts.async) {
-        // Have to use generated function for this, since in envs without support,
-        // it breaks in parsing
-        try {
-          ctor = (new Function('return (async function(){}).constructor;'))();
-        }
-        catch(e) {
-          if (e instanceof SyntaxError) {
-            throw new Error('This environment does not support async/await');
-          }
-          else {
-            throw e;
-          }
-        }
-      }
-      else {
-        ctor = Function;
-      }
-      fn = new ctor(opts.localsName + ', escapeFn, include, rethrow', src);
-    }
-    catch(e) {
-      // istanbul ignore else
-      if (e instanceof SyntaxError) {
-        if (opts.filename) {
-          e.message += ' in ' + opts.filename;
-        }
-        e.message += ' while compiling ejs\n\n';
-        e.message += 'If the above error is not helpful, you may want to try EJS-Lint:\n';
-        e.message += 'https://github.com/RyanZim/EJS-Lint';
-        if (!opts.async) {
-          e.message += '\n';
-          e.message += 'Or, if you meant to create an async function, pass `async: true` as an option.';
-        }
-      }
-      throw e;
-    }
-
-    // Return a callable function which will execute the function
-    // created by the source-code, with the passed data as locals
-    // Adds a local `include` function which allows full recursive include
-    var returnedFn = opts.client ? fn : function anonymous(data) {
-      var include = function (path, includeData) {
-        var d = utils.shallowCopy(utils.createNullProtoObjWherePossible(), data);
-        if (includeData) {
-          d = utils.shallowCopy(d, includeData);
-        }
-        return includeFile(path, opts)(d);
-      };
-      return fn.apply(opts.context,
-        [data || utils.createNullProtoObjWherePossible(), escapeFn, include, rethrow]);
-    };
-    if (opts.filename && typeof Object.defineProperty === 'function') {
-      var filename = opts.filename;
-      var basename = path.basename(filename, path.extname(filename));
-      try {
-        Object.defineProperty(returnedFn, 'name', {
-          value: basename,
-          writable: false,
-          enumerable: false,
-          configurable: true
-        });
-      } catch (e) {/* ignore */}
-    }
-    return returnedFn;
-  },
-
-  generateSource: function () {
-    var opts = this.opts;
-
-    if (opts.rmWhitespace) {
-      // Have to use two separate replace here as `^` and `$` operators don't
-      // work well with `\r` and empty lines don't work well with the `m` flag.
-      this.templateText =
-        this.templateText.replace(/[\r\n]+/g, '\n').replace(/^\s+|\s+$/gm, '');
-    }
-
-    // Slurp spaces and tabs before <%_ and after _%>
-    this.templateText =
-      this.templateText.replace(/[ \t]*<%_/gm, '<%_').replace(/_%>[ \t]*/gm, '_%>');
-
-    var self = this;
-    var matches = this.parseTemplateText();
-    var d = this.opts.delimiter;
-    var o = this.opts.openDelimiter;
-    var c = this.opts.closeDelimiter;
-
-    if (matches && matches.length) {
-      matches.forEach(function (line, index) {
-        var closing;
-        // If this is an opening tag, check for closing tags
-        // FIXME: May end up with some false positives here
-        // Better to store modes as k/v with openDelimiter + delimiter as key
-        // Then this can simply check against the map
-        if ( line.indexOf(o + d) === 0        // If it is a tag
-          && line.indexOf(o + d + d) !== 0) { // and is not escaped
-          closing = matches[index + 2];
-          if (!(closing == d + c || closing == '-' + d + c || closing == '_' + d + c)) {
-            throw new Error('Could not find matching close tag for "' + line + '".');
-          }
-        }
-        self.scanLine(line);
-      });
-    }
-
-  },
-
-  parseTemplateText: function () {
-    var str = this.templateText;
-    var pat = this.regex;
-    var result = pat.exec(str);
-    var arr = [];
-    var firstPos;
-
-    while (result) {
-      firstPos = result.index;
-
-      if (firstPos !== 0) {
-        arr.push(str.substring(0, firstPos));
-        str = str.slice(firstPos);
-      }
-
-      arr.push(result[0]);
-      str = str.slice(result[0].length);
-      result = pat.exec(str);
-    }
-
-    if (str) {
-      arr.push(str);
-    }
-
-    return arr;
-  },
-
-  _addOutput: function (line) {
-    if (this.truncate) {
-      // Only replace single leading linebreak in the line after
-      // -%> tag -- this is the single, trailing linebreak
-      // after the tag that the truncation mode replaces
-      // Handle Win / Unix / old Mac linebreaks -- do the \r\n
-      // combo first in the regex-or
-      line = line.replace(/^(?:\r\n|\r|\n)/, '');
-      this.truncate = false;
-    }
-    if (!line) {
-      return line;
-    }
-
-    // Preserve literal slashes
-    line = line.replace(/\\/g, '\\\\');
-
-    // Convert linebreaks
-    line = line.replace(/\n/g, '\\n');
-    line = line.replace(/\r/g, '\\r');
-
-    // Escape double-quotes
-    // - this will be the delimiter during execution
-    line = line.replace(/"/g, '\\"');
-    this.source += '    ; __append("' + line + '")' + '\n';
-  },
-
-  scanLine: function (line) {
-    var self = this;
-    var d = this.opts.delimiter;
-    var o = this.opts.openDelimiter;
-    var c = this.opts.closeDelimiter;
-    var newLineCount = 0;
-
-    newLineCount = (line.split('\n').length - 1);
-
-    switch (line) {
-    case o + d:
-    case o + d + '_':
-      this.mode = Template.modes.EVAL;
-      break;
-    case o + d + '=':
-      this.mode = Template.modes.ESCAPED;
-      break;
-    case o + d + '-':
-      this.mode = Template.modes.RAW;
-      break;
-    case o + d + '#':
-      this.mode = Template.modes.COMMENT;
-      break;
-    case o + d + d:
-      this.mode = Template.modes.LITERAL;
-      this.source += '    ; __append("' + line.replace(o + d + d, o + d) + '")' + '\n';
-      break;
-    case d + d + c:
-      this.mode = Template.modes.LITERAL;
-      this.source += '    ; __append("' + line.replace(d + d + c, d + c) + '")' + '\n';
-      break;
-    case d + c:
-    case '-' + d + c:
-    case '_' + d + c:
-      if (this.mode == Template.modes.LITERAL) {
-        this._addOutput(line);
-      }
-
-      this.mode = null;
-      this.truncate = line.indexOf('-') === 0 || line.indexOf('_') === 0;
-      break;
-    default:
-      // In script mode, depends on type of tag
-      if (this.mode) {
-        // If '//' is found without a line break, add a line break.
-        switch (this.mode) {
-        case Template.modes.EVAL:
-        case Template.modes.ESCAPED:
-        case Template.modes.RAW:
-          if (line.lastIndexOf('//') > line.lastIndexOf('\n')) {
-            line += '\n';
-          }
-        }
-        switch (this.mode) {
-        // Just executing code
-        case Template.modes.EVAL:
-          this.source += '    ; ' + line + '\n';
-          break;
-          // Exec, esc, and output
-        case Template.modes.ESCAPED:
-          this.source += '    ; __append(escapeFn(' + stripSemi(line) + '))' + '\n';
-          break;
-          // Exec and output
-        case Template.modes.RAW:
-          this.source += '    ; __append(' + stripSemi(line) + ')' + '\n';
-          break;
-        case Template.modes.COMMENT:
-          // Do nothing
-          break;
-          // Literal <%% mode, append as raw output
-        case Template.modes.LITERAL:
-          this._addOutput(line);
-          break;
-        }
-      }
-      // In string mode, just add the output
-      else {
-        this._addOutput(line);
-      }
-    }
-
-    if (self.opts.compileDebug && newLineCount) {
-      this.currentLine += newLineCount;
-      this.source += '    ; __line = ' + this.currentLine + '\n';
-    }
-  }
-};
-
-/**
- * Escape characters reserved in XML.
- *
- * This is simply an export of {@link module:utils.escapeXML}.
- *
- * If `markup` is `undefined` or `null`, the empty string is returned.
- *
- * @param {String} markup Input string
- * @return {String} Escaped string
- * @public
- * @func
- * */
-exports.escapeXML = utils.escapeXML;
-
-/**
- * Express.js support.
- *
- * This is an alias for {@link module:ejs.renderFile}, in order to support
- * Express.js out-of-the-box.
- *
- * @func
- */
-
-exports.__express = exports.renderFile;
-
-/**
- * Version of EJS.
- *
- * @readonly
- * @type {String}
- * @public
- */
-
-exports.VERSION = _VERSION_STRING;
-
-/**
- * Name for detection of EJS.
- *
- * @readonly
- * @type {String}
- * @public
- */
-
-exports.name = _NAME;
-
-/* istanbul ignore if */
-if (typeof window != 'undefined') {
-  window.ejs = exports;
-}
-
-
-
-/***/ }),
-
-/***/ 9061:
-/***/ ((__unused_webpack_module, exports) => {
-
-/*
- * EJS Embedded JavaScript templates
- * Copyright 2112 Matthew Eernisse (mde@fleegix.org)
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *         http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
-*/
-
-/**
- * Private utility functions
- * @module utils
- * @private
- */
-
-
-
-var regExpChars = /[|\\{}()[\]^$+*?.]/g;
-var hasOwnProperty = Object.prototype.hasOwnProperty;
-var hasOwn = function (obj, key) { return hasOwnProperty.apply(obj, [key]); };
-
-/**
- * Escape characters reserved in regular expressions.
- *
- * If `string` is `undefined` or `null`, the empty string is returned.
- *
- * @param {String} string Input string
- * @return {String} Escaped string
- * @static
- * @private
- */
-exports.escapeRegExpChars = function (string) {
-  // istanbul ignore if
-  if (!string) {
-    return '';
-  }
-  return String(string).replace(regExpChars, '\\$&');
-};
-
-var _ENCODE_HTML_RULES = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&#34;',
-  "'": '&#39;'
-};
-var _MATCH_HTML = /[&<>'"]/g;
-
-function encode_char(c) {
-  return _ENCODE_HTML_RULES[c] || c;
-}
-
-/**
- * Stringified version of constants used by {@link module:utils.escapeXML}.
- *
- * It is used in the process of generating {@link ClientFunction}s.
- *
- * @readonly
- * @type {String}
- */
-
-var escapeFuncStr =
-  'var _ENCODE_HTML_RULES = {\n'
-+ '      "&": "&amp;"\n'
-+ '    , "<": "&lt;"\n'
-+ '    , ">": "&gt;"\n'
-+ '    , \'"\': "&#34;"\n'
-+ '    , "\'": "&#39;"\n'
-+ '    }\n'
-+ '  , _MATCH_HTML = /[&<>\'"]/g;\n'
-+ 'function encode_char(c) {\n'
-+ '  return _ENCODE_HTML_RULES[c] || c;\n'
-+ '};\n';
-
-/**
- * Escape characters reserved in XML.
- *
- * If `markup` is `undefined` or `null`, the empty string is returned.
- *
- * @implements {EscapeCallback}
- * @param {String} markup Input string
- * @return {String} Escaped string
- * @static
- * @private
- */
-
-exports.escapeXML = function (markup) {
-  return markup == undefined
-    ? ''
-    : String(markup)
-      .replace(_MATCH_HTML, encode_char);
-};
-
-function escapeXMLToString() {
-  return Function.prototype.toString.call(this) + ';\n' + escapeFuncStr;
-}
-
-try {
-  if (typeof Object.defineProperty === 'function') {
-  // If the Function prototype is frozen, the "toString" property is non-writable. This means that any objects which inherit this property
-  // cannot have the property changed using an assignment. If using strict mode, attempting that will cause an error. If not using strict
-  // mode, attempting that will be silently ignored.
-  // However, we can still explicitly shadow the prototype's "toString" property by defining a new "toString" property on this object.
-    Object.defineProperty(exports.escapeXML, 'toString', { value: escapeXMLToString });
-  } else {
-    // If Object.defineProperty() doesn't exist, attempt to shadow this property using the assignment operator.
-    exports.escapeXML.toString = escapeXMLToString;
-  }
-} catch (err) {
-  console.warn('Unable to set escapeXML.toString (is the Function prototype frozen?)');
-}
-
-/**
- * Naive copy of properties from one object to another.
- * Does not recurse into non-scalar properties
- * Does not check to see if the property has a value before copying
- *
- * @param  {Object} to   Destination object
- * @param  {Object} from Source object
- * @return {Object}      Destination object
- * @static
- * @private
- */
-exports.shallowCopy = function (to, from) {
-  from = from || {};
-  if ((to !== null) && (to !== undefined)) {
-    for (var p in from) {
-      if (!hasOwn(from, p)) {
-        continue;
-      }
-      if (p === '__proto__' || p === 'constructor') {
-        continue;
-      }
-      to[p] = from[p];
-    }
-  }
-  return to;
-};
-
-/**
- * Naive copy of a list of key names, from one object to another.
- * Only copies property if it is actually defined
- * Does not recurse into non-scalar properties
- *
- * @param  {Object} to   Destination object
- * @param  {Object} from Source object
- * @param  {Array} list List of properties to copy
- * @return {Object}      Destination object
- * @static
- * @private
- */
-exports.shallowCopyFromList = function (to, from, list) {
-  list = list || [];
-  from = from || {};
-  if ((to !== null) && (to !== undefined)) {
-    for (var i = 0; i < list.length; i++) {
-      var p = list[i];
-      if (typeof from[p] != 'undefined') {
-        if (!hasOwn(from, p)) {
-          continue;
-        }
-        if (p === '__proto__' || p === 'constructor') {
-          continue;
-        }
-        to[p] = from[p];
-      }
-    }
-  }
-  return to;
-};
-
-/**
- * Simple in-process cache implementation. Does not implement limits of any
- * sort.
- *
- * @implements {Cache}
- * @static
- * @private
- */
-exports.cache = {
-  _data: {},
-  set: function (key, val) {
-    this._data[key] = val;
-  },
-  get: function (key) {
-    return this._data[key];
-  },
-  remove: function (key) {
-    delete this._data[key];
-  },
-  reset: function () {
-    this._data = {};
-  }
-};
-
-/**
- * Transforms hyphen case variable into camel case.
- *
- * @param {String} string Hyphen case string
- * @return {String} Camel case string
- * @static
- * @private
- */
-exports.hyphenToCamel = function (str) {
-  return str.replace(/-[a-z]/g, function (match) { return match[1].toUpperCase(); });
-};
-
-/**
- * Returns a null-prototype object in runtimes that support it
- *
- * @return {Object} Object, prototype will be set to null where possible
- * @static
- * @private
- */
-exports.createNullProtoObjWherePossible = (function () {
-  if (typeof Object.create == 'function') {
-    return function () {
-      return Object.create(null);
-    };
-  }
-  if (!({__proto__: null} instanceof Object)) {
-    return function () {
-      return {__proto__: null};
-    };
-  }
-  // Not possible, just pass through
-  return function () {
-    return {};
-  };
-})();
-
-exports.hasOwnOnlyObject = function (obj) {
-  var o = exports.createNullProtoObjWherePossible();
-  for (var p in obj) {
-    if (hasOwn(obj, p)) {
-      o[p] = obj[p];
-    }
-  }
-  return o;
-};
-
-
-
-/***/ }),
-
 /***/ 5161:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -71140,8 +69924,7 @@ __nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __we
 /* harmony import */ var node_path__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(6760);
 /* harmony import */ var node_path__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__nccwpck_require__.n(node_path__WEBPACK_IMPORTED_MODULE_1__);
 /* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(6352);
-/* harmony import */ var ejs__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(8192);
-/* harmony import */ var ejs__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__nccwpck_require__.n(ejs__WEBPACK_IMPORTED_MODULE_3__);
+/* harmony import */ var ejs__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(3832);
 /* harmony import */ var fast_glob__WEBPACK_IMPORTED_MODULE_4__ = __nccwpck_require__(5161);
 /* harmony import */ var fast_glob__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__nccwpck_require__.n(fast_glob__WEBPACK_IMPORTED_MODULE_4__);
 /* harmony import */ var fp_ts_Array__WEBPACK_IMPORTED_MODULE_14__ = __nccwpck_require__(823);
@@ -71157,7 +69940,7 @@ __nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __we
 /* harmony import */ var _constants_js__WEBPACK_IMPORTED_MODULE_7__ = __nccwpck_require__(1787);
 /* harmony import */ var _github_js__WEBPACK_IMPORTED_MODULE_8__ = __nccwpck_require__(7584);
 /* harmony import */ var _inputs_js__WEBPACK_IMPORTED_MODULE_9__ = __nccwpck_require__(9481);
-/* harmony import */ var _utils_js__WEBPACK_IMPORTED_MODULE_10__ = __nccwpck_require__(4229);
+/* harmony import */ var _utils_js__WEBPACK_IMPORTED_MODULE_10__ = __nccwpck_require__(4370);
 
 
 
@@ -71239,7 +70022,7 @@ const run = async () => {
                     const raw = await node_fs_promises__WEBPACK_IMPORTED_MODULE_0__.readFile(fpath, 'utf8');
                     const stat = await node_fs_promises__WEBPACK_IMPORTED_MODULE_0__.stat(fpath);
                     const mode = (stat.mode & node_fs_promises__WEBPACK_IMPORTED_MODULE_0__.constants.S_IXUSR) !== 0 ? '100755' : '100644';
-                    const content = entry.template !== undefined ? (0,ejs__WEBPACK_IMPORTED_MODULE_3__.render)(raw, entry.template) : raw;
+                    const content = entry.template !== undefined ? ejs__WEBPACK_IMPORTED_MODULE_3__/* ["default"] */ .A.render(raw, entry.template) : raw;
                     return {
                         from,
                         to,
@@ -71285,7 +70068,7 @@ const run = async () => {
                 return 1;
             }
             const repo = repository.right;
-            const branch = (0,ejs__WEBPACK_IMPORTED_MODULE_3__.render)(cfg.branch.format, {
+            const branch = ejs__WEBPACK_IMPORTED_MODULE_3__/* ["default"] */ .A.render(cfg.branch.format, {
                 prefix: cfg.branch.prefix,
                 repository: (0,_utils_js__WEBPACK_IMPORTED_MODULE_10__/* .convertValidBranchName */ .vH)(_constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_REPOSITORY */ .p$),
                 index: i,
@@ -71323,9 +70106,9 @@ const run = async () => {
             const commit = await repo.commit({
                 parent,
                 branch,
-                message: (0,ejs__WEBPACK_IMPORTED_MODULE_3__.render)(cfg.commit.format, {
+                message: ejs__WEBPACK_IMPORTED_MODULE_3__/* ["default"] */ .A.render(cfg.commit.format, {
                     prefix: cfg.commit.prefix,
-                    subject: (0,ejs__WEBPACK_IMPORTED_MODULE_3__.render)(cfg.commit.subject, {
+                    subject: ejs__WEBPACK_IMPORTED_MODULE_3__/* ["default"] */ .A.render(cfg.commit.subject, {
                         repository: _constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_REPOSITORY */ .p$,
                         index: i,
                     }),
@@ -71382,11 +70165,11 @@ const run = async () => {
             // Create Pull Request
             const pr = await repo.createOrUpdatePullRequest({
                 number: existingPr.right?.number ?? null,
-                title: (0,ejs__WEBPACK_IMPORTED_MODULE_3__.render)(cfg.pull_request.title, {
+                title: ejs__WEBPACK_IMPORTED_MODULE_3__/* ["default"] */ .A.render(cfg.pull_request.title, {
                     repository: _constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_REPOSITORY */ .p$,
                     index: i,
                 }),
-                body: (0,ejs__WEBPACK_IMPORTED_MODULE_3__.render)([cfg.pull_request.body, _constants_js__WEBPACK_IMPORTED_MODULE_7__/* .PR_FOOTER */ .lz].join('\n'), {
+                body: ejs__WEBPACK_IMPORTED_MODULE_3__/* ["default"] */ .A.render([cfg.pull_request.body, _constants_js__WEBPACK_IMPORTED_MODULE_7__/* .PR_FOOTER */ .lz].join('\n'), {
                     github: _constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_SERVER */ .Ad,
                     repository: _constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_REPOSITORY */ .p$,
                     workflow: _constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_WORKFLOW */ .E_,
@@ -71460,10 +70243,10 @@ const run = async () => {
                 let commitBody = null;
                 const cc = mergeCfg.commit;
                 if (cc.format) {
-                    const message = (0,ejs__WEBPACK_IMPORTED_MODULE_3__.render)(cc.format, {
+                    const message = ejs__WEBPACK_IMPORTED_MODULE_3__/* ["default"] */ .A.render(cc.format, {
                         prefix: cc.prefix ?? '',
                         subject: cc.subject
-                            ? (0,ejs__WEBPACK_IMPORTED_MODULE_3__.render)(cc.subject, {
+                            ? ejs__WEBPACK_IMPORTED_MODULE_3__/* ["default"] */ .A.render(cc.subject, {
                                 repository: _constants_js__WEBPACK_IMPORTED_MODULE_7__/* .GH_REPOSITORY */ .p$,
                                 index: i,
                             })
@@ -71523,7 +70306,7 @@ __webpack_async_result__();
 
 /***/ }),
 
-/***/ 4229:
+/***/ 4370:
 /***/ ((__unused_webpack_module, __webpack_exports__, __nccwpck_require__) => {
 
 
@@ -71540,7 +70323,7 @@ __nccwpck_require__.d(__webpack_exports__, {
 var external_node_path_ = __nccwpck_require__(6760);
 // EXTERNAL MODULE: external "node:url"
 var external_node_url_ = __nccwpck_require__(3136);
-;// CONCATENATED MODULE: ./node_modules/.pnpm/deepmerge-ts@7.1.0/node_modules/deepmerge-ts/dist/node/index.mjs
+;// CONCATENATED MODULE: ./node_modules/.pnpm/deepmerge-ts@8.0.2/node_modules/deepmerge-ts/dist/index.mjs
 /**
  * Special values that tell deepmerge to perform a certain action.
  */
@@ -71556,20 +70339,206 @@ const actionsInto = {
 };
 
 /**
+ * Returns an empty container of the same outward type as `value`. Used when
+ * `deepmergeInto` recurses through a property the target does not have, so
+ * the recursion has a place to write its result without aliasing any source's
+ * nested array/set/map.
+ *
+ * @param value - A representative value (the kind to copy structurally).
+ * @returns A fresh `Array` / `Set` / `Map` / `Record` (or `value` itself if it
+ * is not one of those types).
+ */
+function emptyLike(value) {
+    if (Array.isArray(value)) {
+        return [];
+    }
+    if (value instanceof Set) {
+        return new Set();
+    }
+    if (value instanceof Map) {
+        return new Map();
+    }
+    if (typeof value === "object" && value !== null) {
+        return {};
+    }
+    return value;
+}
+/**
  * The default function to update meta data.
  *
- * It doesn't update the meta data.
+ * It builds and updates the hierarchy tree.
+ *
+ * @param previousMeta - The previous meta data.
+ * @param mergeInfo - Meta information about the current merge state.
+ * @returns The updated meta data.
  */
-function defaultMetaDataUpdater(previousMeta, metaMeta) {
-    return metaMeta;
+function defaultMetaDataUpdater(previousMeta, mergeInfo) {
+    const ancestor = {
+        key: mergeInfo.key,
+        parents: mergeInfo.parents,
+        values: mergeInfo.values,
+        result: mergeInfo.result,
+    };
+    const prevHierarchy = previousMeta?.hierarchy;
+    return {
+        ...ancestor,
+        hierarchy: prevHierarchy === undefined ? [ancestor] : [...prevHierarchy, ancestor],
+    };
+}
+/**
+ * The default function to update meta data in fast mode.
+ *
+ * It doesn't track any meta data.
+ *
+ * @param previousMeta - The previous meta data.
+ * @param mergeInfo - Meta information about the current merge state.
+ * @returns The updated meta data (undefined).
+ */
+function defaultMetaDataUpdaterFast(previousMeta, mergeInfo) {
+    return undefined;
 }
 /**
  * The default function to filter values.
  *
  * It filters out undefined values.
+ *
+ * @param values - The values to filter.
+ * @param meta - The meta data.
+ * @returns The filtered values.
  */
 function defaultFilterValues(values, meta) {
-    return values.filter((value) => value !== undefined);
+    // Fast path: avoid allocating a new array when no undefined values exist.
+    return values.includes(undefined) ? values.filter((value) => value !== undefined) : values;
+}
+/**
+ * Check if the custom merge result should fall back to the default merge function.
+ *
+ * @param utils - The utils.
+ * @param fallback - The name of the fallback merge function.
+ * @param result - The result of the custom merge function.
+ * @returns Whether to use the default merge function.
+ */
+function shouldFallbackToDefault(utils, fallback, result) {
+    return (result === actions.defaultMerge ||
+        (utils.useImplicitDefaultMerging &&
+            result === undefined &&
+            utils.mergeFunctions[fallback] !== utils.defaultMergeFunctions[fallback]));
+}
+/**
+ * Resolve custom merge functions from user options.
+ *
+ * @param options - The options passed by the user.
+ * @param defaultMergeFunctions - The default merge functions.
+ * @returns The resolved merge functions.
+ */
+function resolveCustomMergeFunctions(options, defaultMergeFunctions) {
+    return {
+        ...defaultMergeFunctions,
+        ...Object.fromEntries(Object.entries(options)
+            .filter(([key]) => Object.hasOwn(defaultMergeFunctions, key))
+            .map(([key, option]) => option === false
+            ? [key, defaultMergeFunctions.mergeOthers]
+            : typeof option === "function"
+                ? [key, option]
+                : [key, defaultMergeFunctions[key]])),
+    };
+}
+/**
+ * The default strategy to merge arrays.
+ *
+ * @param values - The arrays.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ * @returns The merged array.
+ */
+function mergeArrays$1(values, utils, meta) {
+    return values.flat();
+}
+/**
+ * The default strategy to merge sets.
+ *
+ * @param values - The sets.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ * @returns The merged set.
+ */
+function mergeSets$1(values, utils, meta) {
+    const result = new Set();
+    for (const set of values) {
+        for (const element of set) {
+            result.add(element);
+        }
+    }
+    return result;
+}
+/**
+ * The default strategy to merge other things.
+ *
+ * @param values - The other things.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ * @returns The merged value.
+ */
+function mergeOthers$1(values, utils, meta) {
+    return values.at(-1);
+}
+/**
+ * The default strategy to merge arrays into a target array.
+ *
+ * @param mut_target - The target to merge into.
+ * @param values - The arrays (including the target's value if there is one).
+ */
+function mergeArraysInto$1(mut_target, values) {
+    // Build the merged array.
+    const result = [];
+    for (const value of values) {
+        const arr = value;
+        for (const element of arr) {
+            result.push(element);
+        }
+    }
+    // Mutate the target container in place. At the top level this preserves
+    // the user's target reference; in the recursion `mut_target.value` is
+    // either the user's target's nested array (so the same in-place semantic
+    // applies) or a clone we made ourselves, so the source can never be
+    // touched through this assignment.
+    const target = mut_target.value;
+    target.splice(0, target.length, ...result);
+}
+/**
+ * The default strategy to merge sets into a target set.
+ *
+ * @param mut_target - The target to merge into.
+ * @param values - The sets (including the target's value if there is one).
+ */
+function mergeSetsInto$1(mut_target, values) {
+    // Build the merged set.
+    const result = new Set();
+    for (const value_ of values) {
+        for (const value of value_) {
+            result.add(value);
+        }
+    }
+    // Mutate the target set in place. See `mergeArraysInto` for the rationale
+    // about why this is safe at recursion (the recursion only runs against
+    // the target's nested container or a clone we made, never a source).
+    const target = mut_target.value;
+    target.clear();
+    for (const value of result) {
+        target.add(value);
+    }
+}
+/**
+ * The default strategy to merge other things into a target.
+ *
+ * @param mut_target - The target to merge into.
+ * @param values - The other things.
+ */
+function mergeOthersInto$1(mut_target, values) {
+    // Idempotent for non-containers: assigning the leaf value mutates only
+    // the wrapper's `.value` slot (a property on our own object), so this is
+    // safe at recursion regardless of where the wrapper originated.
+    mut_target.value = values.at(-1);
 }
 
 /**
@@ -71592,22 +70561,33 @@ var ObjectType;
  */
 function getObjectType(object) {
     if (typeof object !== "object" || object === null) {
-        return 0 /* ObjectType.NOT */;
+        return ObjectType.NOT;
     }
     if (Array.isArray(object)) {
-        return 2 /* ObjectType.ARRAY */;
+        return ObjectType.ARRAY;
     }
     if (isRecord(object)) {
-        return 1 /* ObjectType.RECORD */;
+        return ObjectType.RECORD;
     }
     if (object instanceof Set) {
-        return 3 /* ObjectType.SET */;
+        return ObjectType.SET;
     }
     if (object instanceof Map) {
-        return 4 /* ObjectType.MAP */;
+        return ObjectType.MAP;
     }
-    return 5 /* ObjectType.OTHER */;
+    return ObjectType.OTHER;
 }
+/**
+ * Get the keys of the given object(s) including symbol keys.
+ * If an array is given, the keys of all the objects within the array are returned.
+ *
+ * Note: Only keys to enumerable properties are returned.
+ *
+ * @deprecated Use `getKeysOfObjects` instead.
+ * @param objects - An array of objects to get the keys of.
+ * @returns A set containing all the keys of all the given objects.
+ */
+const getKeys = (/* unused pure expression or super */ null && (getKeysOfObjects));
 /**
  * Get the keys of the given objects including symbol keys.
  *
@@ -71616,17 +70596,36 @@ function getObjectType(object) {
  * @param objects - An array of objects to get the keys of.
  * @returns A set containing all the keys of all the given objects.
  */
-function getKeys(objects) {
+function getKeysOfObjects(objects) {
     const keys = new Set();
-    for (const object of objects) {
-        for (const key of [
-            ...Object.keys(object),
-            ...Object.getOwnPropertySymbols(object),
-        ]) {
-            keys.add(key);
+    for (const currentObject of objects) {
+        const stringKeys = Object.keys(currentObject);
+        for (const stringKey of stringKeys) {
+            keys.add(stringKey);
+        }
+        const symbols = Object.getOwnPropertySymbols(currentObject);
+        // Fast path: skip symbol iteration when the object has no own symbols.
+        if (symbols.length > 0) {
+            for (const symbol of symbols) {
+                if (Object.prototype.propertyIsEnumerable.call(currentObject, symbol)) {
+                    keys.add(symbol);
+                }
+            }
         }
     }
     return keys;
+}
+/**
+ * Get the keys of the given object.
+ *
+ * Note: Only keys to enumerable properties are returned.
+ *
+ * @param object - The object to get the keys of.
+ * @returns The keys of the given object.
+ */
+function getKeysOfObject(object) {
+    const symbols = Object.getOwnPropertySymbols(object).filter((symbol) => Object.prototype.propertyIsEnumerable.call(object, symbol));
+    return [...Object.keys(object), ...symbols];
 }
 /**
  * Does the given object have the given property.
@@ -71636,33 +70635,25 @@ function getKeys(objects) {
  * @returns Whether the object has the property.
  */
 function objectHasProperty(object, property) {
-    return (typeof object === "object" &&
-        Object.prototype.propertyIsEnumerable.call(object, property));
+    return typeof object === "object" && Object.prototype.propertyIsEnumerable.call(object, property);
 }
-/**
- * Get an iterable object that iterates over the given iterables.
- */
-function getIterableOfIterables(iterables) {
-    return {
-        *[Symbol.iterator]() {
-            for (const iterable of iterables) {
-                for (const value of iterable) {
-                    yield value;
-                }
-            }
-        },
-    };
-}
-const validRecordToStringValues = new Set([
-    "[object Object]",
-    "[object Module]",
-]);
 /**
  * Does the given object appear to be a record.
+ *
+ * @param value - The object to check.
+ * @returns Whether the object is a record.
  */
 function isRecord(value) {
+    // Fast path: Objects created via `{}` (whose prototype is `Object.prototype`)
+    // or `Object.create(null)` (whose prototype is `null`) are plain records.
+    // Assumes that standard plain objects do not have modified prototypes.
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype === null || prototype === Object.prototype) {
+        return true;
+    }
     // All records are objects.
-    if (!validRecordToStringValues.has(Object.prototype.toString.call(value))) {
+    const objectToString = Object.prototype.toString.call(value);
+    if (objectToString !== "[object Object]" && objectToString !== "[object Module]") {
         return false;
     }
     const { constructor } = value;
@@ -71671,42 +70662,128 @@ function isRecord(value) {
     if (constructor === undefined) {
         return true;
     }
-    const prototype = constructor.prototype;
+    const constructorPrototype = constructor.prototype;
     // If has modified prototype.
-    if (prototype === null ||
-        typeof prototype !== "object" ||
-        !validRecordToStringValues.has(Object.prototype.toString.call(prototype))) {
+    if (constructorPrototype === null || typeof constructorPrototype !== "object") {
+        return false;
+    }
+    const constructorToString = Object.prototype.toString.call(constructorPrototype);
+    if (constructorToString !== "[object Object]" && constructorToString !== "[object Module]") {
         return false;
     }
     // If constructor does not have an Object-specific method.
-    // eslint-disable-next-line sonar/prefer-single-boolean-return, no-prototype-builtins
-    if (!prototype.hasOwnProperty("isPrototypeOf")) {
+    if (!Object.hasOwn(constructorPrototype, "isPrototypeOf")) {
         return false;
     }
     // Most likely a record.
     return true;
+}
+/**
+ * If the given object is a cyclic reference in its ancestor tree, return how far down the ancestor tree the object is from its first occurrence. Otherwise, return 0.
+ *
+ * @param object - The object to check.
+ * @param hierarchy - The hierarchy of the object.
+ * @param index - The index of the object (or ancestor of) within the original values passed to the merge function.
+ * @returns The cyclic reference depth of the object if it is a cyclic reference, or 0 if it is not.
+ */
+function getCyclicReferenceDepth(object, hierarchy, index) {
+    // If there is no hierarchy, then there can be no cyclic reference.
+    if (hierarchy === undefined || hierarchy.length === 0) {
+        return 0;
+    }
+    let mut_depth = 1;
+    // Check if the child is an ancestor of itself.
+    for (let mut_index = hierarchy.length - 1; mut_index >= 0; mut_index--) {
+        const { parents } = hierarchy[mut_index];
+        if (parents[index] === object || parents.includes(object)) {
+            return mut_depth;
+        }
+        mut_depth += 1;
+    }
+    return 0;
+}
+/**
+ * Get the hierarchy array from the given meta data if present.
+ *
+ * @param meta - The meta data.
+ * @returns The hierarchy array or undefined.
+ */
+function getMetaDataHierarchy(meta) {
+    return meta?.hierarchy;
 }
 
 /**
  * The default strategy to merge records.
  *
  * @param values - The records.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ * @returns The merged records.
  */
 function mergeRecords$1(values, utils, meta) {
+    if (values.length === 2) {
+        const result = {};
+        // Fast path for 2 records: avoid building a union key set and per-key value
+        // arrays. Only the keys present in each record are iterated.
+        const mergeProperty = (key, propValues) => {
+            const updatedMeta = utils.metaDataUpdater(meta, {
+                key,
+                parents: values,
+                values: propValues,
+                result,
+            });
+            const propertyResult = mergeUnknowns(propValues, utils, updatedMeta);
+            if (propertyResult === actions.skip) {
+                return;
+            }
+            if (key === "__proto__") {
+                Object.defineProperty(result, key, {
+                    value: propertyResult,
+                    configurable: true,
+                    enumerable: true,
+                    writable: true,
+                });
+            }
+            else {
+                result[key] = propertyResult;
+            }
+        };
+        const firstValue = values[0];
+        const secondValue = values[1];
+        for (const key of getKeysOfObject(firstValue)) {
+            mergeProperty(key, objectHasProperty(secondValue, key) ? [firstValue[key], secondValue[key]] : [firstValue[key]]);
+        }
+        for (const key of getKeysOfObject(secondValue)) {
+            if (!objectHasProperty(firstValue, key)) {
+                mergeProperty(key, [secondValue[key]]);
+            }
+        }
+        return result;
+    }
+    return mergeRecordsGeneral(values, utils, meta);
+}
+/**
+ * The default strategy to merge 3 or more records.
+ *
+ * @param values - The records.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ * @returns The merged records.
+ */
+function mergeRecordsGeneral(values, utils, meta) {
     const result = {};
-    for (const key of getKeys(values)) {
+    for (const key of getKeysOfObjects(values)) {
         const propValues = [];
         for (const value of values) {
             if (objectHasProperty(value, key)) {
                 propValues.push(value[key]);
             }
         }
-        if (propValues.length === 0) {
-            continue;
-        }
         const updatedMeta = utils.metaDataUpdater(meta, {
             key,
             parents: values,
+            values: propValues,
+            result,
         });
         const propertyResult = mergeUnknowns(propValues, utils, updatedMeta);
         if (propertyResult === actions.skip) {
@@ -71727,34 +70804,113 @@ function mergeRecords$1(values, utils, meta) {
     return result;
 }
 /**
- * The default strategy to merge arrays.
- *
- * @param values - The arrays.
- */
-function mergeArrays$1(values) {
-    return values.flat();
-}
-/**
- * The default strategy to merge sets.
- *
- * @param values - The sets.
- */
-function mergeSets$1(values) {
-    return new Set(getIterableOfIterables(values));
-}
-/**
  * The default strategy to merge maps.
  *
  * @param values - The maps.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ * @returns The merged map.
  */
-function mergeMaps$1(values) {
-    return new Map(getIterableOfIterables(values));
+function mergeMaps$1(values, utils, meta) {
+    const result = new Map();
+    const valuesByKey = new Map();
+    for (const map of values) {
+        for (const [key, value] of map) {
+            const mut_keyValues = valuesByKey.get(key);
+            if (mut_keyValues === undefined) {
+                valuesByKey.set(key, [value]);
+            }
+            else {
+                mut_keyValues.push(value);
+            }
+        }
+    }
+    for (const [key, keyValues] of valuesByKey) {
+        const updatedMeta = utils.metaDataUpdater(meta, {
+            key,
+            parents: values,
+            values: keyValues,
+            result,
+        });
+        const keyResult = mergeUnknowns(keyValues, utils, updatedMeta);
+        if (keyResult === actions.skip) {
+            continue;
+        }
+        result.set(key, keyResult);
+    }
+    return result;
 }
 /**
- * Get the last non-undefined value in the given array.
+ * Resolve any cyclic references within a non-cyclic object pointing to ancestors in meta.hierarchy.
+ *
+ * @param value - The value to resolve circular references for.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ * @returns The resolved value.
  */
-function mergeOthers$1(values) {
-    return values.at(-1);
+function resolveCyclicReferences(value, utils, meta) {
+    if (typeof value !== "object" || value === null) {
+        return value;
+    }
+    const hierarchy = getMetaDataHierarchy(meta);
+    const depth = getCyclicReferenceDepth(value, hierarchy, 0);
+    if (hierarchy !== undefined && depth > 0) {
+        return hierarchy[hierarchy.length - depth]?.result;
+    }
+    const type = getObjectType(value);
+    if (type === ObjectType.RECORD) {
+        const record = value;
+        let mut_changed = false;
+        const result = {};
+        for (const key of getKeysOfObject(record)) {
+            const propVal = record[key];
+            const updatedMeta = utils.metaDataUpdater(meta, {
+                key,
+                parents: [record],
+                values: [propVal],
+                result,
+            });
+            const resolvedProp = resolveCyclicReferences(propVal, utils, updatedMeta);
+            if (resolvedProp !== propVal) {
+                mut_changed = true;
+            }
+            if (key === "__proto__") {
+                Object.defineProperty(result, key, {
+                    value: resolvedProp,
+                    configurable: true,
+                    enumerable: true,
+                    writable: true,
+                });
+            }
+            else {
+                result[key] = resolvedProp;
+            }
+        }
+        return mut_changed ? result : value;
+    }
+    return value;
+}
+/**
+ * The default strategy to merge circular references.
+ *
+ * @param values - The circular references.
+ * @param cyclicDepths - The depth of each circular reference.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ * @returns The merged circular references.
+ */
+function mergeCircularReferences$1(values, cyclicDepths, utils, meta) {
+    const depth = cyclicDepths[0];
+    const hierarchy = getMetaDataHierarchy(meta);
+    for (let mut_index = 1; mut_index < values.length; mut_index++) {
+        if (cyclicDepths[mut_index] !== depth) {
+            const lastCyclicDepth = cyclicDepths.at(-1);
+            return (lastCyclicDepth === 0
+                ? resolveCyclicReferences(values.at(-1), utils, meta)
+                : hierarchy?.[hierarchy.length - lastCyclicDepth]?.result);
+        }
+    }
+    return hierarchy?.[hierarchy.length - depth]?.result;
 }
 /**
  * The merge functions.
@@ -71764,50 +70920,57 @@ const mergeFunctions = {
     mergeArrays: mergeArrays$1,
     mergeSets: mergeSets$1,
     mergeMaps: mergeMaps$1,
+    mergeCircularReferences: mergeCircularReferences$1,
     mergeOthers: mergeOthers$1,
 };
 
+const defaultDeepmerge = /* #__PURE__ */ deepmergeCustom();
 /**
  * Deeply merge objects.
  *
  * @param objects - The objects to merge.
+ * @returns The merged result.
  */
 function deepmerge(...objects) {
-    return deepmergeCustom({})(...objects);
+    return defaultDeepmerge(...objects);
 }
-function deepmergeCustom(options, rootMetaData) {
-    const utils = getUtils(options, customizedDeepmerge);
+function deepmergeCustom(options = {}, rootMetaData) {
+    const utils = getUtils$1(options, customizedDeepmerge);
     /**
      * The customized deepmerge function.
+     *
+     * @param objects - The objects to merge.
+     * @returns The merged result.
      */
     function customizedDeepmerge(...objects) {
-        return mergeUnknowns(objects, utils, rootMetaData);
+        return mergeUnknowns(objects, utils, rootMetaData ?? undefined);
     }
     return customizedDeepmerge;
 }
 /**
- * The the utils that are available to the merge functions.
+ * Get the utils that are available to the merge functions.
  *
- * @param options - The options the user specified
+ * @param options - The options the user specified.
+ * @param customizedDeepmerge - The customized deepmerge function.
+ * @returns The merge utils.
  */
-function getUtils(options, customizedDeepmerge) {
+function getUtils$1(options, customizedDeepmerge) {
+    const defaultMergeFns = mergeFunctions;
+    const defaultMetaDataUpd = defaultMetaDataUpdater;
     return {
-        defaultMergeFunctions: mergeFunctions,
-        mergeFunctions: {
-            ...mergeFunctions,
-            ...Object.fromEntries(Object.entries(options)
-                .filter(([key, option]) => Object.hasOwn(mergeFunctions, key))
-                .map(([key, option]) => option === false
-                ? [key, mergeFunctions.mergeOthers]
-                : [key, option])),
-        },
-        metaDataUpdater: (options.metaDataUpdater ??
-            defaultMetaDataUpdater),
+        defaultMergeFunctions: defaultMergeFns,
+        mergeFunctions: resolveCustomMergeFunctions(options, defaultMergeFns),
+        metaDataUpdater: typeof options.metaDataUpdater === "function" ? options.metaDataUpdater : defaultMetaDataUpd,
         deepmerge: customizedDeepmerge,
         useImplicitDefaultMerging: options.enableImplicitDefaultMerging ?? false,
         filterValues: options.filterValues === false
             ? undefined
-            : options.filterValues ?? defaultFilterValues,
+            : typeof options.filterValues === "function"
+                ? options.filterValues
+                : defaultFilterValues,
+        maxDepth: typeof options.maxDepth === "number" && !Number.isNaN(options.maxDepth) && options.maxDepth >= 0
+            ? options.maxDepth
+            : 1000,
         actions,
     };
 }
@@ -71815,35 +70978,72 @@ function getUtils(options, customizedDeepmerge) {
  * Merge unknown things.
  *
  * @param values - The values.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ * @returns The merged result.
  */
 function mergeUnknowns(values, utils, meta) {
     const filteredValues = utils.filterValues?.(values, meta) ?? values;
     if (filteredValues.length === 0) {
         return undefined;
     }
+    const hierarchy = getMetaDataHierarchy(meta);
+    const currentDepth = hierarchy?.length ?? (typeof meta === "number" ? meta : (meta?.depth ?? 0));
+    if (utils.maxDepth !== undefined && currentDepth >= utils.maxDepth) {
+        return mergeOthers(filteredValues, utils, meta);
+    }
     if (filteredValues.length === 1) {
+        if (hierarchy !== undefined) {
+            const depth = getCyclicReferenceDepth(filteredValues[0], hierarchy, 0);
+            if (depth > 0) {
+                return (hierarchy[hierarchy.length - depth]?.result ??
+                    hierarchy[hierarchy.length - depth]?.parents[0]);
+            }
+        }
         return mergeOthers(filteredValues, utils, meta);
     }
     const type = getObjectType(filteredValues[0]);
-    if (type !== 0 /* ObjectType.NOT */ && type !== 5 /* ObjectType.OTHER */) {
-        for (let m_index = 1; m_index < filteredValues.length; m_index++) {
-            if (getObjectType(filteredValues[m_index]) === type) {
-                continue;
+    if (type !== ObjectType.NOT && type !== ObjectType.OTHER) {
+        if (filteredValues.length === 2) {
+            // Fast path: avoid dynamic array allocations and loop overhead for 2 elements.
+            if (getObjectType(filteredValues[1]) !== type) {
+                return mergeOthers(filteredValues, utils, meta);
             }
-            return mergeOthers(filteredValues, utils, meta);
+            const d0 = getCyclicReferenceDepth(filteredValues[0], hierarchy, 0);
+            const d1 = getCyclicReferenceDepth(filteredValues[1], hierarchy, 1);
+            if (d0 !== 0 || d1 !== 0) {
+                return mergeCircularReferences(filteredValues, [d0, d1], utils, meta);
+            }
+        }
+        else {
+            // Slow path: 3 or more elements require dynamic array allocations and full iteration.
+            // eslint-disable-next-line unicorn/no-new-array -- We know the final length of the array.
+            const cyclicDepths = new Array(filteredValues.length);
+            cyclicDepths[0] = getCyclicReferenceDepth(filteredValues[0], hierarchy, 0);
+            for (let mut_index = 1; mut_index < filteredValues.length; mut_index++) {
+                // If the object types are different, then we can't merge them.
+                if (getObjectType(filteredValues[mut_index]) !== type) {
+                    return mergeOthers(filteredValues, utils, meta);
+                }
+                // Check if the object is a cyclic reference.
+                cyclicDepths[mut_index] = getCyclicReferenceDepth(filteredValues[mut_index], hierarchy, mut_index);
+            }
+            if (cyclicDepths.some((depth) => depth !== 0)) {
+                return mergeCircularReferences(filteredValues, cyclicDepths, utils, meta);
+            }
         }
     }
     switch (type) {
-        case 1 /* ObjectType.RECORD */: {
+        case ObjectType.RECORD: {
             return mergeRecords(filteredValues, utils, meta);
         }
-        case 2 /* ObjectType.ARRAY */: {
+        case ObjectType.ARRAY: {
             return mergeArrays(filteredValues, utils, meta);
         }
-        case 3 /* ObjectType.SET */: {
+        case ObjectType.SET: {
             return mergeSets(filteredValues, utils, meta);
         }
-        case 4 /* ObjectType.MAP */: {
+        case ObjectType.MAP: {
             return mergeMaps(filteredValues, utils, meta);
         }
         default: {
@@ -71855,14 +71055,13 @@ function mergeUnknowns(values, utils, meta) {
  * Merge records.
  *
  * @param values - The records.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ * @returns The merged result.
  */
 function mergeRecords(values, utils, meta) {
     const result = utils.mergeFunctions.mergeRecords(values, utils, meta);
-    if (result === actions.defaultMerge ||
-        (utils.useImplicitDefaultMerging &&
-            result === undefined &&
-            utils.mergeFunctions.mergeRecords !==
-                utils.defaultMergeFunctions.mergeRecords)) {
+    if (shouldFallbackToDefault(utils, "mergeRecords", result)) {
         return utils.defaultMergeFunctions.mergeRecords(values, utils, meta);
     }
     return result;
@@ -71871,14 +71070,13 @@ function mergeRecords(values, utils, meta) {
  * Merge arrays.
  *
  * @param values - The arrays.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ * @returns The merged result.
  */
 function mergeArrays(values, utils, meta) {
     const result = utils.mergeFunctions.mergeArrays(values, utils, meta);
-    if (result === actions.defaultMerge ||
-        (utils.useImplicitDefaultMerging &&
-            result === undefined &&
-            utils.mergeFunctions.mergeArrays !==
-                utils.defaultMergeFunctions.mergeArrays)) {
+    if (shouldFallbackToDefault(utils, "mergeArrays", result)) {
         return utils.defaultMergeFunctions.mergeArrays(values);
     }
     return result;
@@ -71887,13 +71085,13 @@ function mergeArrays(values, utils, meta) {
  * Merge sets.
  *
  * @param values - The sets.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ * @returns The merged result.
  */
 function mergeSets(values, utils, meta) {
     const result = utils.mergeFunctions.mergeSets(values, utils, meta);
-    if (result === actions.defaultMerge ||
-        (utils.useImplicitDefaultMerging &&
-            result === undefined &&
-            utils.mergeFunctions.mergeSets !== utils.defaultMergeFunctions.mergeSets)) {
+    if (shouldFallbackToDefault(utils, "mergeSets", result)) {
         return utils.defaultMergeFunctions.mergeSets(values);
     }
     return result;
@@ -71902,14 +71100,30 @@ function mergeSets(values, utils, meta) {
  * Merge maps.
  *
  * @param values - The maps.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ * @returns The merged result.
  */
 function mergeMaps(values, utils, meta) {
     const result = utils.mergeFunctions.mergeMaps(values, utils, meta);
-    if (result === actions.defaultMerge ||
-        (utils.useImplicitDefaultMerging &&
-            result === undefined &&
-            utils.mergeFunctions.mergeMaps !== utils.defaultMergeFunctions.mergeMaps)) {
-        return utils.defaultMergeFunctions.mergeMaps(values);
+    if (shouldFallbackToDefault(utils, "mergeMaps", result)) {
+        return utils.defaultMergeFunctions.mergeMaps(values, utils, meta);
+    }
+    return result;
+}
+/**
+ * Merge circular references.
+ *
+ * @param values - The circular references.
+ * @param cyclicDepths - The depth of each circular reference.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ * @returns The merged result.
+ */
+function mergeCircularReferences(values, cyclicDepths, utils, meta) {
+    const result = utils.mergeFunctions.mergeCircularReferences(values, cyclicDepths, utils, meta);
+    if (shouldFallbackToDefault(utils, "mergeCircularReferences", result)) {
+        return utils.defaultMergeFunctions.mergeCircularReferences(values, cyclicDepths, utils, meta);
     }
     return result;
 }
@@ -71917,14 +71131,290 @@ function mergeMaps(values, utils, meta) {
  * Merge other things.
  *
  * @param values - The other things.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ * @returns The merged result.
  */
 function mergeOthers(values, utils, meta) {
     const result = utils.mergeFunctions.mergeOthers(values, utils, meta);
-    if (result === actions.defaultMerge ||
-        (utils.useImplicitDefaultMerging &&
-            result === undefined &&
-            utils.mergeFunctions.mergeOthers !==
-                utils.defaultMergeFunctions.mergeOthers)) {
+    if (shouldFallbackToDefault(utils, "mergeOthers", result)) {
+        return utils.defaultMergeFunctions.mergeOthers(values);
+    }
+    return result;
+}
+
+/**
+ * The fast default strategy to merge records without circular reference checks or depth limits.
+ *
+ * Assumes input is trusted and non-circular.
+ *
+ * @param values - The records.
+ * @param utils - The utils.
+ * @returns The merged records.
+ */
+function mergeRecordsFast$1(values, utils) {
+    if (values.length === 2) {
+        const result = {};
+        // Fast path for 2 records: avoid building a union key set and per-key value
+        // arrays. Only the keys present in each record are iterated.
+        const mergeProperty = (key, propValues) => {
+            const propertyResult = mergeUnknownsFast(propValues, utils);
+            if (propertyResult === actions.skip) {
+                return;
+            }
+            result[key] = propertyResult;
+        };
+        const firstValue = values[0];
+        const secondValue = values[1];
+        for (const key of getKeysOfObject(firstValue)) {
+            mergeProperty(key, objectHasProperty(secondValue, key) ? [firstValue[key], secondValue[key]] : [firstValue[key]]);
+        }
+        for (const key of getKeysOfObject(secondValue)) {
+            if (!objectHasProperty(firstValue, key)) {
+                mergeProperty(key, [secondValue[key]]);
+            }
+        }
+        return result;
+    }
+    return mergeRecordsFastGeneral(values, utils);
+}
+/**
+ * The fast default strategy to merge 3 or more records without circular reference checks or depth limits.
+ *
+ * Assumes input is trusted and non-circular.
+ *
+ * @param values - The records.
+ * @param utils - The utils.
+ * @returns The merged records.
+ */
+function mergeRecordsFastGeneral(values, utils) {
+    const result = {};
+    for (const key of getKeysOfObjects(values)) {
+        const propValues = [];
+        for (const value of values) {
+            if (objectHasProperty(value, key)) {
+                propValues.push(value[key]);
+            }
+        }
+        const propertyResult = mergeUnknownsFast(propValues, utils);
+        if (propertyResult === actions.skip) {
+            continue;
+        }
+        result[key] = propertyResult;
+    }
+    return result;
+}
+/**
+ * The fast default strategy to merge maps without circular reference checks or depth limits.
+ *
+ * Assumes input is trusted and non-circular.
+ *
+ * @param values - The maps.
+ * @param utils - The utils.
+ * @returns The merged map.
+ */
+function mergeMapsFast$1(values, utils) {
+    const result = new Map();
+    const valuesByKey = new Map();
+    for (const map of values) {
+        for (const [key, value] of map) {
+            const mut_keyValues = valuesByKey.get(key);
+            if (mut_keyValues === undefined) {
+                valuesByKey.set(key, [value]);
+            }
+            else {
+                mut_keyValues.push(value);
+            }
+        }
+    }
+    for (const [key, keyValues] of valuesByKey) {
+        const keyResult = mergeUnknownsFast(keyValues, utils);
+        if (keyResult === actions.skip) {
+            continue;
+        }
+        result.set(key, keyResult);
+    }
+    return result;
+}
+/**
+ * The fast merge functions without circular reference checks.
+ */
+const mergeFunctionsFast = {
+    mergeRecords: mergeRecordsFast$1,
+    mergeArrays: mergeArrays$1,
+    mergeSets: mergeSets$1,
+    mergeMaps: mergeMapsFast$1,
+    mergeOthers: mergeOthers$1,
+};
+
+const defaultDeepmergeFastUnsafe = /* #__PURE__ */ (/* unused pure expression or super */ null && (deepmergeFastUnsafeCustom()));
+/**
+ * Deeply merge objects using a high-performance strategy.
+ *
+ * Differences from `deepmerge` (standard version):
+ * - **No circular reference detection:** Does not track object hierarchies or detect cyclic references. Circular structures will result in a stack overflow.
+ * - **No recursion depth limits:** Does not enforce a `maxDepth` limit (standard version defaults to 1000).
+ * - **No metadata tracking:** Metadata updates and custom metadata tracking are bypassed, avoiding metadata object allocations.
+ * - **No prototype pollution interception:** Assumes trusted data and directly assigns properties.
+ *
+ * @warning Only use this function with **trusted, non-circular data**.
+ * Using this function with untrusted user data can result in serious security vulnerabilities:
+ * - **Prototype pollution:** Prototype pollution safeguards are omitted for speed; malicious keys like `__proto__` can pollute object prototypes.
+ * - **Denial of Service (DoS):** Circular reference detection and recursion depth limits are disabled; cyclic or deeply nested input will cause infinite recursion and crash via stack overflow.
+ * @param objects - The objects to merge.
+ * @returns The merged result.
+ */
+function deepmergeFastUnsafe(...objects) {
+    return defaultDeepmergeFastUnsafe(...objects);
+}
+function deepmergeFastUnsafeCustom(options = {}) {
+    const utils = getUtilsFast$1(options, customizedDeepmergeFast);
+    function customizedDeepmergeFast(...objects) {
+        return mergeUnknownsFast(objects, utils);
+    }
+    return customizedDeepmergeFast;
+}
+/**
+ * Get the utils that are available to the merge functions in fast mode.
+ *
+ * @param options - The options the user specified.
+ * @param customizedDeepmergeFast - The customized deepmergeFastUnsafe function.
+ * @returns The fast merge utils.
+ */
+function getUtilsFast$1(options, customizedDeepmergeFast) {
+    const defaultMergeFns = mergeFunctionsFast;
+    const defaultMetaDataUpd = defaultMetaDataUpdaterFast;
+    return {
+        defaultMergeFunctions: defaultMergeFns,
+        mergeFunctions: resolveCustomMergeFunctions(options, defaultMergeFns),
+        metaDataUpdater: defaultMetaDataUpd,
+        deepmerge: customizedDeepmergeFast,
+        useImplicitDefaultMerging: options.enableImplicitDefaultMerging ?? false,
+        filterValues: options.filterValues === false
+            ? undefined
+            : typeof options.filterValues === "function"
+                ? options.filterValues
+                : defaultFilterValues,
+        maxDepth: undefined,
+        actions,
+    };
+}
+/**
+ * Merge unknown things in fast mode without checking for circular references or depth limits.
+ *
+ * @param values - The values.
+ * @param utils - The utils.
+ * @returns The merged result.
+ */
+function mergeUnknownsFast(values, utils) {
+    const filteredValues = utils.filterValues?.(values, undefined) ?? values;
+    if (filteredValues.length === 0) {
+        return undefined;
+    }
+    if (filteredValues.length === 1) {
+        return mergeOthersFast(filteredValues, utils);
+    }
+    const type = getObjectType(filteredValues[0]);
+    if (type !== ObjectType.NOT && type !== ObjectType.OTHER) {
+        if (filteredValues.length === 2) {
+            // Fast path: avoid loop overhead for 2 elements.
+            if (getObjectType(filteredValues[1]) !== type) {
+                return mergeOthersFast(filteredValues, utils);
+            }
+        }
+        else {
+            // Slow path: 3 or more elements require full iteration.
+            for (let mut_index = 1; mut_index < filteredValues.length; mut_index++) {
+                if (getObjectType(filteredValues[mut_index]) !== type) {
+                    return mergeOthersFast(filteredValues, utils);
+                }
+            }
+        }
+    }
+    switch (type) {
+        case ObjectType.RECORD: {
+            return mergeRecordsFast(filteredValues, utils);
+        }
+        case ObjectType.ARRAY: {
+            return mergeArraysFast(filteredValues, utils);
+        }
+        case ObjectType.SET: {
+            return mergeSetsFast(filteredValues, utils);
+        }
+        case ObjectType.MAP: {
+            return mergeMapsFast(filteredValues, utils);
+        }
+        default: {
+            return mergeOthersFast(filteredValues, utils);
+        }
+    }
+}
+/**
+ * Merge records in fast mode.
+ *
+ * @param values - The records.
+ * @param utils - The utils.
+ * @returns The merged result.
+ */
+function mergeRecordsFast(values, utils) {
+    const result = utils.mergeFunctions.mergeRecords(values, utils, undefined);
+    if (shouldFallbackToDefault(utils, "mergeRecords", result)) {
+        return utils.defaultMergeFunctions.mergeRecords(values, utils, undefined);
+    }
+    return result;
+}
+/**
+ * Merge arrays in fast mode.
+ *
+ * @param values - The arrays.
+ * @param utils - The utils.
+ * @returns The merged result.
+ */
+function mergeArraysFast(values, utils) {
+    const result = utils.mergeFunctions.mergeArrays(values, utils, undefined);
+    if (shouldFallbackToDefault(utils, "mergeArrays", result)) {
+        return utils.defaultMergeFunctions.mergeArrays(values);
+    }
+    return result;
+}
+/**
+ * Merge sets in fast mode.
+ *
+ * @param values - The sets.
+ * @param utils - The utils.
+ * @returns The merged result.
+ */
+function mergeSetsFast(values, utils) {
+    const result = utils.mergeFunctions.mergeSets(values, utils, undefined);
+    if (shouldFallbackToDefault(utils, "mergeSets", result)) {
+        return utils.defaultMergeFunctions.mergeSets(values);
+    }
+    return result;
+}
+/**
+ * Merge maps in fast mode.
+ *
+ * @param values - The maps.
+ * @param utils - The utils.
+ * @returns The merged result.
+ */
+function mergeMapsFast(values, utils) {
+    const result = utils.mergeFunctions.mergeMaps(values, utils, undefined);
+    if (shouldFallbackToDefault(utils, "mergeMaps", result)) {
+        return utils.defaultMergeFunctions.mergeMaps(values, utils, undefined);
+    }
+    return result;
+}
+/**
+ * Merge other things in fast mode.
+ *
+ * @param values - The other things.
+ * @param utils - The utils.
+ * @returns The merged result.
+ */
+function mergeOthersFast(values, utils) {
+    const result = utils.mergeFunctions.mergeOthers(values, utils, undefined);
+    if (shouldFallbackToDefault(utils, "mergeOthers", result)) {
         return utils.defaultMergeFunctions.mergeOthers(values);
     }
     return result;
@@ -71933,28 +71423,80 @@ function mergeOthers(values, utils, meta) {
 /**
  * The default strategy to merge records into a target record.
  *
- * @param m_target - The result will be mutated into this record
+ * @param mut_target - The target to merge into.
  * @param values - The records (including the target's value if there is one).
+ * @param utils - The utils.
+ * @param meta - The meta data.
  */
-function mergeRecordsInto$1(m_target, values, utils, meta) {
-    for (const key of getKeys(values)) {
+function mergeRecordsInto$1(mut_target, values, utils, meta) {
+    if (values.length === 2) {
+        // Fast path for 2 records: avoid building a union key set and per-key value
+        // arrays. Only the keys present in each record are iterated.
+        const mergeProperty = (key, propValues) => {
+            const updatedMeta = utils.metaDataUpdater(meta, {
+                key,
+                parents: values,
+                values: propValues,
+                result: mut_target.value,
+            });
+            const propertyTarget = objectHasProperty(mut_target.value, key)
+                ? { value: propValues[0] }
+                : { value: emptyLike(propValues[0]) };
+            mergeUnknownsInto(propertyTarget, propValues, utils, updatedMeta);
+            if (key === "__proto__") {
+                Object.defineProperty(mut_target.value, key, {
+                    value: propertyTarget.value,
+                    configurable: true,
+                    enumerable: true,
+                    writable: true,
+                });
+            }
+            else {
+                mut_target.value[key] = propertyTarget.value;
+            }
+        };
+        const firstValue = values[0];
+        const secondValue = values[1];
+        for (const key of getKeysOfObject(firstValue)) {
+            mergeProperty(key, objectHasProperty(secondValue, key) ? [firstValue[key], secondValue[key]] : [firstValue[key]]);
+        }
+        for (const key of getKeysOfObject(secondValue)) {
+            if (!objectHasProperty(firstValue, key)) {
+                mergeProperty(key, [secondValue[key]]);
+            }
+        }
+        return;
+    }
+    mergeRecordsIntoGeneral(mut_target, values, utils, meta);
+}
+/**
+ * The default strategy to merge 3 or more records into a target record.
+ *
+ * @param mut_target - The target to merge into.
+ * @param values - The records (including the target's value if there is one).
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ */
+function mergeRecordsIntoGeneral(mut_target, values, utils, meta) {
+    for (const key of getKeysOfObjects(values)) {
         const propValues = [];
         for (const value of values) {
             if (objectHasProperty(value, key)) {
                 propValues.push(value[key]);
             }
         }
-        if (propValues.length === 0) {
-            continue;
-        }
         const updatedMeta = utils.metaDataUpdater(meta, {
             key,
             parents: values,
+            values: propValues,
+            result: mut_target.value,
         });
-        const propertyTarget = { value: propValues[0] };
+        const propertyTarget = objectHasProperty(mut_target.value, key)
+            ? { value: propValues[0] }
+            : { value: emptyLike(propValues[0]) };
         mergeUnknownsInto(propertyTarget, propValues, utils, updatedMeta);
         if (key === "__proto__") {
-            Object.defineProperty(m_target.value, key, {
+            Object.defineProperty(mut_target.value, key, {
                 value: propertyTarget.value,
                 configurable: true,
                 enumerable: true,
@@ -71962,46 +71504,133 @@ function mergeRecordsInto$1(m_target, values, utils, meta) {
             });
         }
         else {
-            m_target.value[key] = propertyTarget.value;
+            mut_target.value[key] = propertyTarget.value;
         }
-    }
-}
-/**
- * The default strategy to merge arrays into a target array.
- *
- * @param m_target - The result will be mutated into this array
- * @param values - The arrays (including the target's value if there is one).
- */
-function mergeArraysInto$1(m_target, values) {
-    m_target.value.push(...values.slice(1).flat());
-}
-/**
- * The default strategy to merge sets into a target set.
- *
- * @param m_target - The result will be mutated into this set
- * @param values - The sets (including the target's value if there is one).
- */
-function mergeSetsInto$1(m_target, values) {
-    for (const value of getIterableOfIterables(values.slice(1))) {
-        m_target.value.add(value);
     }
 }
 /**
  * The default strategy to merge maps into a target map.
  *
- * @param m_target - The result will be mutated into this map
+ * @param mut_target - The target to merge into.
  * @param values - The maps (including the target's value if there is one).
+ * @param utils - The utils.
+ * @param meta - The meta data.
  */
-function mergeMapsInto$1(m_target, values) {
-    for (const [key, value] of getIterableOfIterables(values.slice(1))) {
-        m_target.value.set(key, value);
+function mergeMapsInto$1(mut_target, values, utils, meta) {
+    // Merge into `mut_target.value` in place. The recursion branch never
+    // aliases a source's container: `mergeUnknownsInto` below only operates on
+    // the target's nested value (when target had the key) or on an empty
+    // container we made (when target didn't have the key), so mutating this
+    // map's contents cannot leak into a source.
+    const valuesByKey = new Map();
+    for (const value of values) {
+        if (value === mut_target.value) {
+            // `values` includes the target's own map when the recursion target
+            // already had the key; its entries are merged via `target.get(key)`.
+            continue;
+        }
+        for (const [key, entryValue] of value) {
+            const mut_keyValues = valuesByKey.get(key);
+            if (mut_keyValues === undefined) {
+                valuesByKey.set(key, [entryValue]);
+            }
+            else {
+                mut_keyValues.push(entryValue);
+            }
+        }
+    }
+    const target = mut_target.value;
+    for (const [key, keyValues] of valuesByKey) {
+        const targetValue = target.get(key);
+        const allValues = targetValue === undefined ? keyValues : [targetValue, ...keyValues];
+        // The `result` reported to metaDataUpdater must be `mut_target.value` so
+        // that the hierarchy captures a stable reference to the target. Input
+        // cycles that point back at the target then resolve correctly.
+        const updatedMeta = utils.metaDataUpdater(meta, {
+            key,
+            parents: values,
+            values: allValues,
+            result: mut_target.value,
+        });
+        const propTarget = targetValue === undefined ? { value: emptyLike(allValues[0]) } : { value: targetValue };
+        mergeUnknownsInto(propTarget, allValues, utils, updatedMeta);
+        target.set(key, propTarget.value);
     }
 }
 /**
- * Set the target to the last non-undefined value.
+ * Resolve any cyclic references within a non-cyclic object pointing to ancestors in meta.hierarchy.
+ *
+ * @param value - The value to resolve circular references for.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ * @returns The resolved value.
  */
-function mergeOthersInto$1(m_target, values) {
-    m_target.value = values.at(-1);
+function resolveCyclicReferencesInto(value, utils, meta) {
+    if (typeof value !== "object" || value === null) {
+        return value;
+    }
+    const hierarchy = getMetaDataHierarchy(meta);
+    const depth = getCyclicReferenceDepth(value, hierarchy, 0);
+    if (hierarchy !== undefined && depth > 0) {
+        return hierarchy[hierarchy.length - depth]?.result ?? hierarchy[hierarchy.length - depth]?.parents[0];
+    }
+    const type = getObjectType(value);
+    if (type === ObjectType.RECORD) {
+        const record = value;
+        let mut_changed = false;
+        const result = {};
+        for (const key of getKeysOfObject(record)) {
+            const propVal = record[key];
+            const updatedMeta = utils.metaDataUpdater(meta, {
+                key,
+                parents: [record],
+                values: [propVal],
+                result,
+            });
+            const resolvedProp = resolveCyclicReferencesInto(propVal, utils, updatedMeta);
+            if (resolvedProp !== propVal) {
+                mut_changed = true;
+            }
+            if (key === "__proto__") {
+                Object.defineProperty(result, key, {
+                    value: resolvedProp,
+                    configurable: true,
+                    enumerable: true,
+                    writable: true,
+                });
+            }
+            else {
+                result[key] = resolvedProp;
+            }
+        }
+        return mut_changed ? result : value;
+    }
+    return value;
+}
+/**
+ * The default strategy to merge circular references into a target.
+ *
+ * @param mut_target - The target to merge into.
+ * @param values - The circular references.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ */
+function mergeCircularReferencesInto$1(mut_target, values, utils, meta) {
+    const hierarchy = getMetaDataHierarchy(meta);
+    const cyclicDepths = values.map((v, i) => getCyclicReferenceDepth(v, hierarchy, i));
+    const depth = cyclicDepths[0];
+    for (let mut_index = 1; mut_index < values.length; mut_index++) {
+        if (cyclicDepths[mut_index] !== depth) {
+            const lastCyclicDepth = cyclicDepths.at(-1);
+            mut_target.value =
+                lastCyclicDepth === 0
+                    ? resolveCyclicReferencesInto(values.at(-1), utils, meta)
+                    : (hierarchy?.[hierarchy.length - lastCyclicDepth]?.result ??
+                        hierarchy?.[hierarchy.length - lastCyclicDepth]?.parents[0]);
+            return;
+        }
+    }
+    mut_target.value = hierarchy?.[hierarchy.length - depth]?.result ?? hierarchy?.[hierarchy.length - depth]?.parents[0];
 }
 /**
  * The merge functions.
@@ -72011,16 +71640,21 @@ const mergeIntoFunctions = {
     mergeArrays: mergeArraysInto$1,
     mergeSets: mergeSetsInto$1,
     mergeMaps: mergeMapsInto$1,
+    mergeCircularReferences: mergeCircularReferencesInto$1,
     mergeOthers: mergeOthersInto$1,
 };
 
+const defaultDeepmergeInto = /* #__PURE__ */ (/* unused pure expression or super */ null && (deepmergeIntoCustom()));
 function deepmergeInto(target, ...objects) {
-    return void deepmergeIntoCustom({})(target, ...objects);
+    return void defaultDeepmergeInto(target, ...objects);
 }
-function deepmergeIntoCustom(options, rootMetaData) {
-    const utils = getIntoUtils(options, customizedDeepmergeInto);
+function deepmergeIntoCustom(options = {}, rootMetaData) {
+    const utils = getUtils(options, customizedDeepmergeInto);
     /**
-     * The customized deepmerge function.
+     * The customized deepmergeInto function.
+     *
+     * @param target - The target object to merge into.
+     * @param objects - The objects to merge into the target.
      */
     function customizedDeepmergeInto(target, ...objects) {
         mergeUnknownsInto({ value: target }, [target, ...objects], utils, rootMetaData);
@@ -72028,130 +71662,447 @@ function deepmergeIntoCustom(options, rootMetaData) {
     return customizedDeepmergeInto;
 }
 /**
- * The the utils that are available to the merge functions.
+ * Get the utils that are available to the merge functions.
  *
- * @param options - The options the user specified
+ * @param options - The options the user specified.
+ * @param customizedDeepmergeInto - The customized deepmergeInto function.
+ * @returns The merge into utils.
  */
-function getIntoUtils(options, customizedDeepmergeInto) {
+function getUtils(options, customizedDeepmergeInto) {
+    const defaultMergeFns = mergeIntoFunctions;
+    const defaultMetaDataUpd = defaultMetaDataUpdater;
     return {
-        defaultMergeFunctions: mergeIntoFunctions,
-        mergeFunctions: {
-            ...mergeIntoFunctions,
-            ...Object.fromEntries(Object.entries(options)
-                .filter(([key, option]) => Object.hasOwn(mergeIntoFunctions, key))
-                .map(([key, option]) => option === false
-                ? [key, mergeIntoFunctions.mergeOthers]
-                : [key, option])),
-        },
-        metaDataUpdater: (options.metaDataUpdater ??
-            defaultMetaDataUpdater),
+        defaultMergeFunctions: defaultMergeFns,
+        mergeFunctions: resolveCustomMergeFunctions(options, defaultMergeFns),
+        metaDataUpdater: typeof options.metaDataUpdater === "function" ? options.metaDataUpdater : defaultMetaDataUpd,
         deepmergeInto: customizedDeepmergeInto,
         filterValues: options.filterValues === false
             ? undefined
-            : options.filterValues ?? defaultFilterValues,
+            : typeof options.filterValues === "function"
+                ? options.filterValues
+                : defaultFilterValues,
+        maxDepth: typeof options.maxDepth === "number" && !Number.isNaN(options.maxDepth) && options.maxDepth >= 0
+            ? options.maxDepth
+            : 1000,
         actions: actionsInto,
     };
 }
 /**
  * Merge unknown things into a target.
  *
- * @param m_target - The target to merge into.
+ * @param mut_target - The target to merge into.
  * @param values - The values.
+ * @param utils - The utils.
+ * @param meta - The meta data.
  */
-function mergeUnknownsInto(m_target, values, utils, meta) {
+function mergeUnknownsInto(mut_target, values, utils, meta) {
     const filteredValues = utils.filterValues?.(values, meta) ?? values;
     if (filteredValues.length === 0) {
         return;
     }
-    if (filteredValues.length === 1) {
-        return void mergeOthersInto(m_target, filteredValues, utils, meta);
+    const hierarchy = getMetaDataHierarchy(meta);
+    const currentDepth = hierarchy?.length ?? (typeof meta === "number" ? meta : (meta?.depth ?? 0));
+    if (utils.maxDepth !== undefined && currentDepth >= utils.maxDepth) {
+        return void mergeOthersInto(mut_target, filteredValues, utils, meta);
     }
-    const type = getObjectType(m_target.value);
-    if (type !== 0 /* ObjectType.NOT */ && type !== 5 /* ObjectType.OTHER */) {
-        for (let m_index = 1; m_index < filteredValues.length; m_index++) {
-            if (getObjectType(filteredValues[m_index]) === type) {
-                continue;
+    if (filteredValues.length === 1) {
+        if (hierarchy !== undefined) {
+            const depth = getCyclicReferenceDepth(filteredValues[0], hierarchy, 0);
+            if (depth > 0) {
+                mut_target.value =
+                    hierarchy[hierarchy.length - depth]?.result ?? hierarchy[hierarchy.length - depth]?.parents[0];
+                return;
             }
-            return void mergeOthersInto(m_target, filteredValues, utils, meta);
+        }
+        return void mergeOthersInto(mut_target, filteredValues, utils, meta);
+    }
+    const type = getObjectType(mut_target.value);
+    if (type !== ObjectType.NOT && type !== ObjectType.OTHER) {
+        if (filteredValues.length === 2) {
+            // Fast path: avoid dynamic array allocations and loop overhead for 2 elements.
+            if (getObjectType(filteredValues[1]) !== type) {
+                return void mergeOthersInto(mut_target, filteredValues, utils, meta);
+            }
+            const d0 = getCyclicReferenceDepth(filteredValues[0], hierarchy, 0);
+            const d1 = getCyclicReferenceDepth(filteredValues[1], hierarchy, 1);
+            if (d0 !== 0 || d1 !== 0) {
+                return void mergeCircularReferencesInto(mut_target, filteredValues, utils, meta);
+            }
+        }
+        else {
+            // Slow path: 3 or more elements require dynamic array allocations and full iteration.
+            // eslint-disable-next-line unicorn/no-new-array -- We know the final length of the array.
+            const cyclicDepths = new Array(filteredValues.length);
+            cyclicDepths[0] = getCyclicReferenceDepth(filteredValues[0], hierarchy, 0);
+            for (let mut_index = 1; mut_index < filteredValues.length; mut_index++) {
+                if (getObjectType(filteredValues[mut_index]) !== type) {
+                    return void mergeOthersInto(mut_target, filteredValues, utils, meta);
+                }
+                cyclicDepths[mut_index] = getCyclicReferenceDepth(filteredValues[mut_index], hierarchy, mut_index);
+            }
+            if (cyclicDepths.some((depth) => depth !== 0)) {
+                return void mergeCircularReferencesInto(mut_target, filteredValues, utils, meta);
+            }
         }
     }
     switch (type) {
-        case 1 /* ObjectType.RECORD */: {
-            return void mergeRecordsInto(m_target, filteredValues, utils, meta);
+        case ObjectType.RECORD: {
+            return void mergeRecordsInto(mut_target, filteredValues, utils, meta);
         }
-        case 2 /* ObjectType.ARRAY */: {
-            return void mergeArraysInto(m_target, filteredValues, utils, meta);
+        case ObjectType.ARRAY: {
+            return void mergeArraysInto(mut_target, filteredValues, utils, meta);
         }
-        case 3 /* ObjectType.SET */: {
-            return void mergeSetsInto(m_target, filteredValues, utils, meta);
+        case ObjectType.SET: {
+            return void mergeSetsInto(mut_target, filteredValues, utils, meta);
         }
-        case 4 /* ObjectType.MAP */: {
-            return void mergeMapsInto(m_target, filteredValues, utils, meta);
+        case ObjectType.MAP: {
+            return void mergeMapsInto(mut_target, filteredValues, utils, meta);
         }
         default: {
-            return void mergeOthersInto(m_target, filteredValues, utils, meta);
+            return void mergeOthersInto(mut_target, filteredValues, utils, meta);
         }
     }
 }
 /**
  * Merge records into a target record.
  *
- * @param m_target - The target to merge into.
+ * @param mut_target - The target to merge into.
  * @param values - The records.
+ * @param utils - The utils.
+ * @param meta - The meta data.
  */
-function mergeRecordsInto(m_target, values, utils, meta) {
-    const action = utils.mergeFunctions.mergeRecords(m_target, values, utils, meta);
+function mergeRecordsInto(mut_target, values, utils, meta) {
+    const action = utils.mergeFunctions.mergeRecords(mut_target, values, utils, meta);
     if (action === actionsInto.defaultMerge) {
-        utils.defaultMergeFunctions.mergeRecords(m_target, values, utils, meta);
+        utils.defaultMergeFunctions.mergeRecords(mut_target, values, utils, meta);
     }
 }
 /**
  * Merge arrays into a target array.
  *
- * @param m_target - The target to merge into.
+ * @param mut_target - The target to merge into.
  * @param values - The arrays.
+ * @param utils - The utils.
+ * @param meta - The meta data.
  */
-function mergeArraysInto(m_target, values, utils, meta) {
-    const action = utils.mergeFunctions.mergeArrays(m_target, values, utils, meta);
+function mergeArraysInto(mut_target, values, utils, meta) {
+    const action = utils.mergeFunctions.mergeArrays(mut_target, values, utils, meta);
     if (action === actionsInto.defaultMerge) {
-        utils.defaultMergeFunctions.mergeArrays(m_target, values);
+        utils.defaultMergeFunctions.mergeArrays(mut_target, values);
     }
 }
 /**
  * Merge sets into a target set.
  *
- * @param m_target - The target to merge into.
+ * @param mut_target - The target to merge into.
  * @param values - The sets.
+ * @param utils - The utils.
+ * @param meta - The meta data.
  */
-function mergeSetsInto(m_target, values, utils, meta) {
-    const action = utils.mergeFunctions.mergeSets(m_target, values, utils, meta);
+function mergeSetsInto(mut_target, values, utils, meta) {
+    const action = utils.mergeFunctions.mergeSets(mut_target, values, utils, meta);
     if (action === actionsInto.defaultMerge) {
-        utils.defaultMergeFunctions.mergeSets(m_target, values);
+        utils.defaultMergeFunctions.mergeSets(mut_target, values);
     }
 }
 /**
  * Merge maps into a target map.
  *
- * @param m_target - The target to merge into.
+ * @param mut_target - The target to merge into.
  * @param values - The maps.
+ * @param utils - The utils.
+ * @param meta - The meta data.
  */
-function mergeMapsInto(m_target, values, utils, meta) {
-    const action = utils.mergeFunctions.mergeMaps(m_target, values, utils, meta);
+function mergeMapsInto(mut_target, values, utils, meta) {
+    const action = utils.mergeFunctions.mergeMaps(mut_target, values, utils, meta);
     if (action === actionsInto.defaultMerge) {
-        utils.defaultMergeFunctions.mergeMaps(m_target, values);
+        utils.defaultMergeFunctions.mergeMaps(mut_target, values, utils, meta);
+    }
+}
+/**
+ * Merge circular references into a target.
+ *
+ * @param mut_target - The target to merge into.
+ * @param values - The circular references.
+ * @param utils - The utils.
+ * @param meta - The meta data.
+ */
+function mergeCircularReferencesInto(mut_target, values, utils, meta) {
+    const action = utils.mergeFunctions.mergeCircularReferences(mut_target, values, utils, meta);
+    if (action === actionsInto.defaultMerge || mut_target.value === actionsInto.defaultMerge) {
+        utils.defaultMergeFunctions.mergeCircularReferences(mut_target, values, utils, meta);
     }
 }
 /**
  * Merge other things into a target.
  *
- * @param m_target - The target to merge into.
+ * @param mut_target - The target to merge into.
  * @param values - The other things.
+ * @param utils - The utils.
+ * @param meta - The meta data.
  */
-function mergeOthersInto(m_target, values, utils, meta) {
-    const action = utils.mergeFunctions.mergeOthers(m_target, values, utils, meta);
-    if (action === actionsInto.defaultMerge ||
-        m_target.value === actionsInto.defaultMerge) {
-        utils.defaultMergeFunctions.mergeOthers(m_target, values);
+function mergeOthersInto(mut_target, values, utils, meta) {
+    const action = utils.mergeFunctions.mergeOthers(mut_target, values, utils, meta);
+    if (action === actionsInto.defaultMerge || mut_target.value === actionsInto.defaultMerge) {
+        utils.defaultMergeFunctions.mergeOthers(mut_target, values);
+    }
+}
+
+/**
+ * The fast default strategy to merge records into a target record without circular reference checks or depth limits.
+ *
+ * Assumes input is trusted and non-circular.
+ *
+ * @param mut_target - The target to merge into.
+ * @param values - The records (including the target's value if there is one).
+ * @param utils - The utils.
+ */
+function mergeRecordsIntoFast$1(mut_target, values, utils) {
+    if (values.length === 2) {
+        // Fast path for 2 records: avoid building a union key set and per-key value
+        // arrays. Only the keys present in each record are iterated.
+        const mergeProperty = (key, propValues) => {
+            const propertyTarget = objectHasProperty(mut_target.value, key)
+                ? { value: propValues[0] }
+                : { value: emptyLike(propValues[0]) };
+            mergeUnknownsIntoFast(propertyTarget, propValues, utils);
+            mut_target.value[key] = propertyTarget.value;
+        };
+        const firstValue = values[0];
+        const secondValue = values[1];
+        for (const key of getKeysOfObject(firstValue)) {
+            mergeProperty(key, objectHasProperty(secondValue, key) ? [firstValue[key], secondValue[key]] : [firstValue[key]]);
+        }
+        for (const key of getKeysOfObject(secondValue)) {
+            if (!objectHasProperty(firstValue, key)) {
+                mergeProperty(key, [secondValue[key]]);
+            }
+        }
+        return;
+    }
+    mergeRecordsIntoFastGeneral(mut_target, values, utils);
+}
+/**
+ * The fast default strategy to merge 3 or more records into a target record without circular reference checks or depth limits.
+ *
+ * Assumes input is trusted and non-circular.
+ *
+ * @param mut_target - The target to merge into.
+ * @param values - The records (including the target's value if there is one).
+ * @param utils - The utils.
+ */
+function mergeRecordsIntoFastGeneral(mut_target, values, utils) {
+    for (const key of getKeysOfObjects(values)) {
+        const propValues = [];
+        for (const value of values) {
+            if (objectHasProperty(value, key)) {
+                propValues.push(value[key]);
+            }
+        }
+        const propertyTarget = objectHasProperty(mut_target.value, key)
+            ? { value: propValues[0] }
+            : { value: emptyLike(propValues[0]) };
+        mergeUnknownsIntoFast(propertyTarget, propValues, utils);
+        mut_target.value[key] = propertyTarget.value;
+    }
+}
+/**
+ * The fast default strategy to merge maps into a target map without circular reference checks or depth limits.
+ *
+ * Assumes input is trusted and non-circular.
+ *
+ * @param mut_target - The target to merge into.
+ * @param values - The maps (including the target's value if there is one).
+ * @param utils - The utils.
+ */
+function mergeMapsIntoFast$1(mut_target, values, utils) {
+    // See `mergeMapsInto` in `defaults/into.ts` for the full rationale.
+    // Merge into `mut_target.value` in place.
+    const valuesByKey = new Map();
+    for (const value of values) {
+        if (value === mut_target.value) {
+            // `values` includes the target's own map when the recursion target
+            // already had the key; its entries are merged via `target.get(key)`.
+            continue;
+        }
+        for (const [key, entryValue] of value) {
+            const mut_keyValues = valuesByKey.get(key);
+            if (mut_keyValues === undefined) {
+                valuesByKey.set(key, [entryValue]);
+            }
+            else {
+                mut_keyValues.push(entryValue);
+            }
+        }
+    }
+    const target = mut_target.value;
+    for (const [key, keyValues] of valuesByKey) {
+        const targetValue = target.get(key);
+        const allValues = targetValue === undefined ? keyValues : [targetValue, ...keyValues];
+        const propTarget = targetValue === undefined ? { value: emptyLike(allValues[0]) } : { value: targetValue };
+        mergeUnknownsIntoFast(propTarget, allValues, utils);
+        target.set(key, propTarget.value);
+    }
+}
+/**
+ * The fast merge functions without circular reference checks.
+ */
+const mergeIntoFunctionsFast = {
+    mergeRecords: mergeRecordsIntoFast$1,
+    mergeArrays: mergeArraysInto$1,
+    mergeSets: mergeSetsInto$1,
+    mergeMaps: mergeMapsIntoFast$1,
+    mergeOthers: mergeOthersInto$1,
+};
+
+const defaultDeepmergeIntoFastUnsafe = /* #__PURE__ */ (/* unused pure expression or super */ null && (deepmergeIntoFastUnsafeCustom()));
+function deepmergeIntoFastUnsafe(target, ...objects) {
+    return void defaultDeepmergeIntoFastUnsafe(target, ...objects);
+}
+function deepmergeIntoFastUnsafeCustom(options = {}) {
+    const utils = getUtilsFast(options, customizedDeepmergeIntoFast);
+    function customizedDeepmergeIntoFast(target, ...objects) {
+        mergeUnknownsIntoFast({ value: target }, [target, ...objects], utils);
+    }
+    return customizedDeepmergeIntoFast;
+}
+/**
+ * Get the utils that are available to the merge functions in fast mode.
+ *
+ * @param options - The options the user specified.
+ * @param customizedDeepmergeIntoFast - The customized deepmergeIntoFastUnsafe function.
+ * @returns The fast merge into utils.
+ */
+function getUtilsFast(options, customizedDeepmergeIntoFast) {
+    const defaultMergeFns = mergeIntoFunctionsFast;
+    const defaultMetaDataUpd = defaultMetaDataUpdaterFast;
+    return {
+        defaultMergeFunctions: defaultMergeFns,
+        mergeFunctions: resolveCustomMergeFunctions(options, defaultMergeFns),
+        metaDataUpdater: defaultMetaDataUpd,
+        deepmergeInto: customizedDeepmergeIntoFast,
+        filterValues: options.filterValues === false
+            ? undefined
+            : typeof options.filterValues === "function"
+                ? options.filterValues
+                : defaultFilterValues,
+        maxDepth: undefined,
+        actions: actionsInto,
+    };
+}
+/**
+ * Merge unknown things into a target in fast mode without checking for circular references or depth limits.
+ *
+ * @param mut_target - The target to merge into.
+ * @param values - The values.
+ * @param utils - The utils.
+ */
+function mergeUnknownsIntoFast(mut_target, values, utils) {
+    const filteredValues = utils.filterValues?.(values, undefined) ?? values;
+    if (filteredValues.length === 0) {
+        return;
+    }
+    if (filteredValues.length === 1) {
+        return void mergeOthersIntoFast(mut_target, filteredValues, utils);
+    }
+    const type = getObjectType(mut_target.value);
+    if (type !== ObjectType.NOT && type !== ObjectType.OTHER) {
+        if (filteredValues.length === 2) {
+            // Fast path: avoid loop overhead for 2 elements.
+            if (getObjectType(filteredValues[1]) !== type) {
+                return void mergeOthersIntoFast(mut_target, filteredValues, utils);
+            }
+        }
+        else {
+            // Slow path: 3 or more elements require full iteration.
+            for (let mut_index = 1; mut_index < filteredValues.length; mut_index++) {
+                if (getObjectType(filteredValues[mut_index]) !== type) {
+                    return void mergeOthersIntoFast(mut_target, filteredValues, utils);
+                }
+            }
+        }
+    }
+    switch (type) {
+        case ObjectType.RECORD: {
+            return void mergeRecordsIntoFast(mut_target, filteredValues, utils);
+        }
+        case ObjectType.ARRAY: {
+            return void mergeArraysIntoFast(mut_target, filteredValues, utils);
+        }
+        case ObjectType.SET: {
+            return void mergeSetsIntoFast(mut_target, filteredValues, utils);
+        }
+        case ObjectType.MAP: {
+            return void mergeMapsIntoFast(mut_target, filteredValues, utils);
+        }
+        default: {
+            return void mergeOthersIntoFast(mut_target, filteredValues, utils);
+        }
+    }
+}
+/**
+ * Merge records into a target record in fast mode.
+ *
+ * @param mut_target - The target to merge into.
+ * @param values - The records.
+ * @param utils - The utils.
+ */
+function mergeRecordsIntoFast(mut_target, values, utils) {
+    const action = utils.mergeFunctions.mergeRecords(mut_target, values, utils, undefined);
+    if (action === actionsInto.defaultMerge) {
+        utils.defaultMergeFunctions.mergeRecords(mut_target, values, utils, undefined);
+    }
+}
+/**
+ * Merge arrays into a target array in fast mode.
+ *
+ * @param mut_target - The target to merge into.
+ * @param values - The arrays.
+ * @param utils - The utils.
+ */
+function mergeArraysIntoFast(mut_target, values, utils) {
+    const action = utils.mergeFunctions.mergeArrays(mut_target, values, utils, undefined);
+    if (action === actionsInto.defaultMerge) {
+        utils.defaultMergeFunctions.mergeArrays(mut_target, values);
+    }
+}
+/**
+ * Merge sets into a target set in fast mode.
+ *
+ * @param mut_target - The target to merge into.
+ * @param values - The sets.
+ * @param utils - The utils.
+ */
+function mergeSetsIntoFast(mut_target, values, utils) {
+    const action = utils.mergeFunctions.mergeSets(mut_target, values, utils, undefined);
+    if (action === actionsInto.defaultMerge) {
+        utils.defaultMergeFunctions.mergeSets(mut_target, values);
+    }
+}
+/**
+ * Merge maps into a target map in fast mode.
+ *
+ * @param mut_target - The target to merge into.
+ * @param values - The maps.
+ * @param utils - The utils.
+ */
+function mergeMapsIntoFast(mut_target, values, utils) {
+    const action = utils.mergeFunctions.mergeMaps(mut_target, values, utils, undefined);
+    if (action === actionsInto.defaultMerge) {
+        utils.defaultMergeFunctions.mergeMaps(mut_target, values, utils, undefined);
+    }
+}
+/**
+ * Merge other things into a target in fast mode.
+ *
+ * @param mut_target - The target to merge into.
+ * @param values - The other things.
+ * @param utils - The utils.
+ */
+function mergeOthersIntoFast(mut_target, values, utils) {
+    const action = utils.mergeFunctions.mergeOthers(mut_target, values, utils, undefined);
+    if (action === actionsInto.defaultMerge || mut_target.value === actionsInto.defaultMerge) {
+        utils.defaultMergeFunctions.mergeOthers(mut_target, values);
     }
 }
 
@@ -83974,10 +83925,1218 @@ function getIDToken(aud) {
 
 /***/ }),
 
-/***/ 2025:
-/***/ ((module) => {
+/***/ 3832:
+/***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __nccwpck_require__) => {
 
-module.exports = {"rE":"3.1.10"};
+
+// EXPORTS
+__nccwpck_require__.d(__webpack_exports__, {
+  A: () => (/* binding */ esm_ejs)
+});
+
+;// CONCATENATED MODULE: external "node:fs"
+const external_node_fs_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs");
+// EXTERNAL MODULE: external "node:path"
+var external_node_path_ = __nccwpck_require__(6760);
+;// CONCATENATED MODULE: ./node_modules/.pnpm/ejs@6.0.1/node_modules/ejs/lib/esm/utils.js
+/*
+ * EJS Embedded JavaScript templates
+ * Copyright 2112 Matthew Eernisse (mde@fleegix.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+*/
+
+/**
+ * Private utility functions
+ * @module utils
+ * @private
+ */
+
+
+
+const utils = {};
+var regExpChars = /[|\\{}()[\]^$+*?.]/g;
+var utils_hasOwnProperty = Object.prototype.hasOwnProperty;
+var hasOwn = function (obj, key) { return utils_hasOwnProperty.apply(obj, [key]); };
+utils.hasOwn = hasOwn;
+
+/**
+ * Escape characters reserved in regular expressions.
+ *
+ * If `string` is `undefined` or `null`, the empty string is returned.
+ *
+ * @param {String} string Input string
+ * @return {String} Escaped string
+ * @static
+ * @private
+ */
+utils.escapeRegExpChars = function (string) {
+  // istanbul ignore if
+  if (!string) {
+    return '';
+  }
+  return String(string).replace(regExpChars, '\\$&');
+};
+
+var _ENCODE_HTML_RULES = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&#34;',
+  "'": '&#39;'
+};
+var _MATCH_HTML = /[&<>'"]/g;
+
+function encode_char(c) {
+  return _ENCODE_HTML_RULES[c] || c;
+}
+
+/**
+ * Stringified version of constants used by {@link module:utils.escapeXML}.
+ *
+ * @readonly
+ * @type {String}
+ */
+
+var escapeFuncStr =
+  'var _ENCODE_HTML_RULES = {\n'
++ '      "&": "&amp;"\n'
++ '    , "<": "&lt;"\n'
++ '    , ">": "&gt;"\n'
++ '    , \'"\': "&#34;"\n'
++ '    , "\'": "&#39;"\n'
++ '    }\n'
++ '  , _MATCH_HTML = /[&<>\'"]/g;\n'
++ 'function encode_char(c) {\n'
++ '  return _ENCODE_HTML_RULES[c] || c;\n'
++ '};\n';
+
+/**
+ * Escape characters reserved in XML.
+ *
+ * If `markup` is `undefined` or `null`, the empty string is returned.
+ *
+ * @implements {EscapeCallback}
+ * @param {String} markup Input string
+ * @return {String} Escaped string
+ * @static
+ * @private
+ */
+
+utils.escapeXML = function (markup) {
+  return markup == undefined
+    ? ''
+    : String(markup)
+      .replace(_MATCH_HTML, encode_char);
+};
+
+function escapeXMLToString() {
+  return Function.prototype.toString.call(this) + ';\n' + escapeFuncStr;
+}
+
+try {
+  if (typeof Object.defineProperty === 'function') {
+  // If the Function prototype is frozen, the "toString" property is non-writable. This means that any objects which inherit this property
+  // cannot have the property changed using an assignment. If using strict mode, attempting that will cause an error. If not using strict
+  // mode, attempting that will be silently ignored.
+  // However, we can still explicitly shadow the prototype's "toString" property by defining a new "toString" property on this object.
+    Object.defineProperty(utils.escapeXML, 'toString', { value: escapeXMLToString });
+  } else {
+    // If Object.defineProperty() doesn't exist, attempt to shadow this property using the assignment operator.
+    utils.escapeXML.toString = escapeXMLToString;
+  }
+} catch (err) {
+  console.warn('Unable to set escapeXML.toString (is the Function prototype frozen?)');
+}
+
+/**
+ * Naive copy of properties from one object to another.
+ * Does not recurse into non-scalar properties
+ * Does not check to see if the property has a value before copying
+ *
+ * @param  {Object} to   Destination object
+ * @param  {Object} from Source object
+ * @return {Object}      Destination object
+ * @static
+ * @private
+ */
+utils.shallowCopy = function (to, from) {
+  from = from || {};
+  if ((to !== null) && (to !== undefined)) {
+    for (var p in from) {
+      if (!hasOwn(from, p)) {
+        continue;
+      }
+      if (p === '__proto__' || p === 'constructor') {
+        continue;
+      }
+      to[p] = from[p];
+    }
+  }
+  return to;
+};
+
+/**
+ * Naive copy of a list of key names, from one object to another.
+ * Only copies property if it is actually defined
+ * Does not recurse into non-scalar properties
+ *
+ * @param  {Object} to   Destination object
+ * @param  {Object} from Source object
+ * @param  {Array} list List of properties to copy
+ * @return {Object}      Destination object
+ * @static
+ * @private
+ */
+utils.shallowCopyFromList = function (to, from, list) {
+  list = list || [];
+  from = from || {};
+  if ((to !== null) && (to !== undefined)) {
+    for (var i = 0; i < list.length; i++) {
+      var p = list[i];
+      if (typeof from[p] != 'undefined') {
+        if (!hasOwn(from, p)) {
+          continue;
+        }
+        if (p === '__proto__' || p === 'constructor') {
+          continue;
+        }
+        to[p] = from[p];
+      }
+    }
+  }
+  return to;
+};
+
+/**
+ * Simple in-process cache implementation. Does not implement limits of any
+ * sort.
+ *
+ * @implements {Cache}
+ * @static
+ * @private
+ */
+utils.cache = {
+  _data: {},
+  set: function (key, val) {
+    this._data[key] = val;
+  },
+  get: function (key) {
+    return this._data[key];
+  },
+  remove: function (key) {
+    delete this._data[key];
+  },
+  reset: function () {
+    this._data = {};
+  }
+};
+
+/**
+ * Transforms hyphen case variable into camel case.
+ *
+ * @param {String} string Hyphen case string
+ * @return {String} Camel case string
+ * @static
+ * @private
+ */
+utils.hyphenToCamel = function (str) {
+  return str.replace(/-[a-z]/g, function (match) { return match[1].toUpperCase(); });
+};
+
+/**
+ * Returns a null-prototype object in runtimes that support it
+ *
+ * @return {Object} Object, prototype will be set to null where possible
+ * @static
+ * @private
+ */
+utils.createNullProtoObjWherePossible = (function () {
+  if (typeof Object.create == 'function') {
+    return function () {
+      return Object.create(null);
+    };
+  }
+  if (!({__proto__: null} instanceof Object)) {
+    return function () {
+      return {__proto__: null};
+    };
+  }
+  // Not possible, just pass through
+  return function () {
+    return {};
+  };
+})();
+
+/**
+ * Copies own-properties from one object to a null-prototype object for basic
+ * protection against prototype pollution
+ *
+ * @return {Object} Object with own-properties of input object
+ * @static
+ * @private
+ */
+utils.hasOwnOnlyObject = function (obj) {
+  var o = utils.createNullProtoObjWherePossible();
+  for (var p in obj) {
+    if (hasOwn(obj, p)) {
+      o[p] = obj[p];
+    }
+  }
+  return o;
+};
+
+/* harmony default export */ const esm_utils = (utils);
+
+;// CONCATENATED MODULE: ./node_modules/.pnpm/ejs@6.0.1/node_modules/ejs/lib/esm/ejs.js
+/*
+ * EJS Embedded JavaScript templates
+ * Copyright 2112 Matthew Eernisse (mde@fleegix.org)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+*/
+
+
+
+
+
+
+
+/**
+ * @file Embedded JavaScript templating engine. {@link http://ejs.co}
+ * @author Matthew Eernisse <mde@fleegix.org>
+ * @project EJS
+ * @license {@link http://www.apache.org/licenses/LICENSE-2.0 Apache License, Version 2.0}
+ */
+
+/**
+ * EJS internal functions.
+ *
+ * Technically this "module" lies in the same file as {@link module:ejs}, for
+ * the sake of organization all the private functions re grouped into this
+ * module.
+ *
+ * @module ejs-internal
+ * @private
+ */
+
+/**
+ * Embedded JavaScript templating engine.
+ *
+ * @module ejs
+ * @public
+ */
+
+// Keyword used in code generation -- updated to 'var' in CJS build
+const DECLARATION_KEYWORD = 'let';
+
+const ejs = {};
+
+/** @type {string} */
+let _DEFAULT_OPEN_DELIMITER = '<';
+let _DEFAULT_CLOSE_DELIMITER = '>';
+let _DEFAULT_DELIMITER = '%';
+let _DEFAULT_LOCALS_NAME = 'locals';
+let _REGEX_STRING = '(<%%|%%>|<%=|<%-|<%_|<%#|<%|%>|-%>|_%>)';
+let _OPTS_PASSABLE_WITH_DATA = ['delimiter', 'scope', 'context', 'debug', 'compileDebug',
+  '_with', 'rmWhitespace', 'strict', 'filename', 'async'];
+// We don't allow 'cache' option to be passed in the data obj for
+// the normal `render` call, but this is where Express 2 & 3 put it
+// so we make an exception for `renderFile`
+let _OPTS_PASSABLE_WITH_DATA_EXPRESS = _OPTS_PASSABLE_WITH_DATA.concat('cache');
+let _BOM = /^\uFEFF/;
+let _JS_IDENTIFIER = /^[a-zA-Z_$][0-9a-zA-Z_$]*$/;
+
+/**
+ * EJS template function cache. This can be a LRU object from lru-cache NPM
+ * module. By default, it is {@link module:utils.cache}, a simple in-process
+ * cache that grows continuously.
+ *
+ * @type {Cache}
+ */
+
+ejs.cache = esm_utils.cache;
+
+/**
+ * Custom file loader. Useful for template preprocessing or restricting access
+ * to a certain part of the filesystem.
+ *
+ * @type {fileLoader}
+ */
+
+ejs.fileLoader = external_node_fs_namespaceObject.readFileSync;
+
+/**
+ * Name of the object containing the locals.
+ *
+ * This variable is overridden by {@link Options}`.localsName` if it is not
+ * `undefined`.
+ *
+ * @type {String}
+ * @public
+ */
+
+ejs.localsName = _DEFAULT_LOCALS_NAME;
+
+/**
+ * Promise implementation -- defaults to the native implementation if available
+ * This is mostly just for testability
+ *
+ * @type {PromiseConstructorLike}
+ * @public
+ */
+
+ejs.promiseImpl = (new Function('return this;'))().Promise;
+
+/**
+ * Get the path to the included file from the parent file path and the
+ * specified path.
+ *
+ * @param {String}  name     specified path
+ * @param {String}  filename parent file path
+ * @param {Boolean} [isDir=false] whether the parent file path is a directory
+ * @return {String}
+ */
+ejs.resolveInclude = function(name, filename, isDir) {
+  let dirname = external_node_path_.dirname;
+  let extname = external_node_path_.extname;
+  let resolve = external_node_path_.resolve;
+  let includePath = resolve(isDir ? filename : dirname(filename), name);
+  let ext = extname(name);
+  if (!ext) {
+    includePath += '.ejs';
+  }
+  return includePath;
+};
+
+/**
+ * Try to resolve file path on multiple directories
+ *
+ * @param  {String}        name  specified path
+ * @param  {Array<String>} paths list of possible parent directory paths
+ * @return {String}
+ */
+function resolvePaths(name, paths) {
+  let filePath;
+  if (paths.some(function (v) {
+    filePath = ejs.resolveInclude(name, v, true);
+    return external_node_fs_namespaceObject.existsSync(filePath);
+  })) {
+    return filePath;
+  }
+}
+
+/**
+ * Get the path to the included file by Options
+ *
+ * @param  {String}  path    specified path
+ * @param  {Options} options compilation options
+ * @return {String}
+ */
+function getIncludePath(path, options) {
+  let includePath;
+  let filePath;
+  let views = options.views;
+  let match = /^[A-Za-z]+:\\|^\//.exec(path);
+
+  // Abs path
+  if (match && match.length) {
+    path = path.replace(/^\/*/, '');
+    if (Array.isArray(options.root)) {
+      includePath = resolvePaths(path, options.root);
+    } else {
+      includePath = ejs.resolveInclude(path, options.root || '/', true);
+    }
+  }
+  // Relative paths
+  else {
+    // Look relative to a passed filename first
+    if (options.filename) {
+      filePath = ejs.resolveInclude(path, options.filename);
+      if (external_node_fs_namespaceObject.existsSync(filePath)) {
+        includePath = filePath;
+      }
+    }
+    // Then look in any views directories
+    if (!includePath && Array.isArray(views)) {
+      includePath = resolvePaths(path, views);
+    }
+    if (!includePath && typeof options.includer !== 'function') {
+      throw new Error('Could not find the include file "' +
+          options.escapeFunction(path) + '"');
+    }
+  }
+  return includePath;
+}
+
+/**
+ * Get the template from a string or a file, either compiled on-the-fly or
+ * read from cache (if enabled), and cache the template if needed.
+ *
+ * If `template` is not set, the file specified in `options.filename` will be
+ * read.
+ *
+ * If `options.cache` is true, this function reads the file from
+ * `options.filename` so it must be set prior to calling this function.
+ *
+ * @memberof module:ejs-internal
+ * @param {Options} options   compilation options
+ * @param {String} [template] template source
+ * @return {TemplateFunction}
+ * @static
+ */
+
+function handleCache(options, template) {
+  let func;
+  let filename = options.filename;
+  let hasTemplate = arguments.length > 1;
+
+  if (options.cache) {
+    if (!filename) {
+      throw new Error('cache option requires a filename');
+    }
+    func = ejs.cache.get(filename);
+    if (func) {
+      return func;
+    }
+    if (!hasTemplate) {
+      template = fileLoader(filename).toString().replace(_BOM, '');
+    }
+  }
+  else if (!hasTemplate) {
+    // istanbul ignore if: should not happen at all
+    if (!filename) {
+      throw new Error('Internal EJS error: no file name or template '
+                    + 'provided');
+    }
+    template = fileLoader(filename).toString().replace(_BOM, '');
+  }
+  func = ejs.compile(template, options);
+  if (options.cache) {
+    ejs.cache.set(filename, func);
+  }
+  return func;
+}
+
+/**
+ * Try calling handleCache with the given options and data and call the
+ * callback with the result. If an error occurs, call the callback with
+ * the error. Used by renderFile().
+ *
+ * @memberof module:ejs-internal
+ * @param {Options} options    compilation options
+ * @param {Object} data        template data
+ * @param {RenderFileCallback} cb callback
+ * @static
+ */
+
+function tryHandleCache(options, data, cb) {
+  let result;
+  if (!cb) {
+    if (typeof ejs.promiseImpl == 'function') {
+      return new ejs.promiseImpl(function (resolve, reject) {
+        try {
+          result = handleCache(options)(data);
+          resolve(result);
+        }
+        catch (err) {
+          reject(err);
+        }
+      });
+    }
+    else {
+      throw new Error('Please provide a callback function');
+    }
+  }
+  else {
+    try {
+      result = handleCache(options)(data);
+    }
+    catch (err) {
+      return cb(err);
+    }
+
+    cb(null, result);
+  }
+}
+
+/**
+ * fileLoader is independent
+ *
+ * @param {String} filePath ejs file path.
+ * @return {String} The contents of the specified file.
+ * @static
+ */
+
+function fileLoader(filePath){
+  return ejs.fileLoader(filePath);
+}
+
+/**
+ * Get the template function.
+ *
+ * If `options.cache` is `true`, then the template is cached.
+ *
+ * @memberof module:ejs-internal
+ * @param {String}  path    path for the specified file
+ * @param {Options} options compilation options
+ * @return {TemplateFunction}
+ * @static
+ */
+
+function includeFile(path, options) {
+  let opts = esm_utils.shallowCopy(esm_utils.createNullProtoObjWherePossible(), options);
+  opts.filename = getIncludePath(path, opts);
+  if (typeof options.includer === 'function') {
+    let includerResult = options.includer(path, opts.filename);
+    if (includerResult) {
+      if (includerResult.filename) {
+        opts.filename = includerResult.filename;
+      }
+      if (includerResult.template) {
+        return handleCache(opts, includerResult.template);
+      }
+    }
+  }
+  return handleCache(opts);
+}
+
+/**
+ * Re-throw the given `err` in context to the `str` of ejs, `filename`, and
+ * `lineno`.
+ *
+ * @implements {RethrowCallback}
+ * @memberof module:ejs-internal
+ * @param {Error}  err      Error object
+ * @param {String} str      EJS source
+ * @param {String} flnm     file name of the EJS file
+ * @param {Number} lineno   line number of the error
+ * @param {EscapeCallback} esc
+ * @static
+ */
+
+function rethrow(err, str, flnm, lineno, esc) {
+  let lines = str.split('\n');
+  let start = Math.max(lineno - 3, 0);
+  let end = Math.min(lines.length, lineno + 3);
+  let filename = esc(flnm);
+  // Error context
+  let context = lines.slice(start, end).map(function (line, i){
+    let curr = i + start + 1;
+    return (curr == lineno ? ' >> ' : '    ')
+      + curr
+      + '| '
+      + line;
+  }).join('\n');
+
+  // Alter exception message
+  err.path = filename;
+  err.message = (filename || 'ejs') + ':'
+    + lineno + '\n'
+    + context + '\n\n'
+    + err.message;
+
+  throw err;
+}
+
+function stripSemi(str){
+  return str.replace(/;(\s*$)/, '$1');
+}
+
+/**
+ * Compile the given `str` of ejs into a template function.
+ *
+ * @param {String}  template EJS template
+ *
+ * @param {Options} [opts] compilation options
+ *
+ * @return {TemplateFunction}
+ * Note that the return type of the function depends on the value of `opts.async`.
+ * @public
+ */
+
+ejs.compile = function compile(template, opts) {
+  let templ;
+
+  // v1 compat
+  // 'scope' is 'context'
+  // FIXME: Remove this in a future version
+  if (opts && opts.scope) {
+    console.warn('`scope` option is deprecated and will be removed in future EJS');
+    if (!opts.context) {
+      opts.context = opts.scope;
+    }
+    delete opts.scope;
+  }
+  templ = new Template(template, opts);
+  return templ.compile();
+};
+
+/**
+ * Render the given `template` of ejs.
+ *
+ * If you would like to include options but not data, you need to explicitly
+ * call this function with `data` being an empty object or `null`.
+ *
+ * @param {String}   template EJS template
+ * @param {Object}  [data={}] template data
+ * @param {Options} [opts={}] compilation and rendering options
+ * @return {(String|Promise<String>)}
+ * Return value type depends on `opts.async`.
+ * @public
+ */
+
+ejs.render = function (template, d, o) {
+  let data = d || esm_utils.createNullProtoObjWherePossible();
+  let opts = o || esm_utils.createNullProtoObjWherePossible();
+
+  // No options object -- if there are optiony names
+  // in the data, copy them to options
+  if (arguments.length == 2) {
+    esm_utils.shallowCopyFromList(opts, data, _OPTS_PASSABLE_WITH_DATA);
+  }
+
+  return handleCache(opts, template)(data);
+};
+
+/**
+ * Render an EJS file at the given `path` and callback `cb(err, str)`.
+ *
+ * If you would like to include options but not data, you need to explicitly
+ * call this function with `data` being an empty object or `null`.
+ *
+ * @param {String}             path     path to the EJS file
+ * @param {Object}            [data={}] template data
+ * @param {Options}           [opts={}] compilation and rendering options
+ * @param {RenderFileCallback} cb callback
+ * @public
+ */
+
+ejs.renderFile = function () {
+  let args = Array.prototype.slice.call(arguments);
+  let filename = args.shift();
+  let cb;
+  let opts = {filename: filename};
+  let data;
+  let viewOpts;
+
+  // Do we have a callback?
+  if (typeof arguments[arguments.length - 1] == 'function') {
+    cb = args.pop();
+  }
+  // Do we have data/opts?
+  if (args.length) {
+    // Should always have data obj
+    data = args.shift();
+    // Normal passed opts (data obj + opts obj)
+    if (args.length) {
+      // Use shallowCopy so we don't pollute passed in opts obj with new vals
+      esm_utils.shallowCopy(opts, args.pop());
+    }
+    // Special casing for Express (settings + opts-in-data)
+    else {
+      // Express 3 and 4
+      if (esm_utils.hasOwn(data, 'settings') && data.settings) {
+        // Pull a few things from known locations
+        if (data.settings.views) {
+          opts.views = data.settings.views;
+        }
+        if (data.settings['view cache']) {
+          opts.cache = true;
+        }
+        // Undocumented after Express 2, but still usable, esp. for
+        // items that are unsafe to be passed along with data, like `root`
+        viewOpts = data.settings['view options'];
+        if (viewOpts) {
+          esm_utils.shallowCopy(opts, viewOpts);
+        }
+      }
+      // Express 2 and lower, values set in app.locals, or people who just
+      // want to pass options in their data. NOTE: These values will override
+      // anything previously set in settings  or settings['view options']
+      esm_utils.shallowCopyFromList(opts, data, _OPTS_PASSABLE_WITH_DATA_EXPRESS);
+    }
+    opts.filename = filename;
+  }
+  else {
+    data = esm_utils.createNullProtoObjWherePossible();
+  }
+
+  return tryHandleCache(opts, data, cb);
+};
+
+/**
+ * Clear intermediate JavaScript cache. Calls {@link Cache#reset}.
+ * @public
+ */
+
+/**
+ * EJS template class
+ * @public
+ */
+ejs.Template = Template;
+
+ejs.clearCache = function () {
+  ejs.cache.reset();
+};
+
+function Template(text, optsParam) {
+  let opts = esm_utils.hasOwnOnlyObject(optsParam);
+  let options = esm_utils.createNullProtoObjWherePossible();
+  this.templateText = text;
+  /** @type {string | null} */
+  this.mode = null;
+  this.truncate = false;
+  this.currentLine = 1;
+  this.source = '';
+  options.escapeFunction = opts.escape || opts.escapeFunction || esm_utils.escapeXML;
+  options.compileDebug = opts.compileDebug !== false;
+  options.debug = !!opts.debug;
+  options.filename = opts.filename;
+  options.openDelimiter = opts.openDelimiter || ejs.openDelimiter || _DEFAULT_OPEN_DELIMITER;
+  options.closeDelimiter = opts.closeDelimiter || ejs.closeDelimiter || _DEFAULT_CLOSE_DELIMITER;
+  options.delimiter = opts.delimiter || ejs.delimiter || _DEFAULT_DELIMITER;
+  options.strict = opts.strict || false;
+  options.context = opts.context;
+  options.cache = opts.cache || false;
+  options.rmWhitespace = opts.rmWhitespace;
+  options.root = opts.root;
+  options.includer = opts.includer;
+  options.outputFunctionName = opts.outputFunctionName;
+  options.localsName = opts.localsName || ejs.localsName || _DEFAULT_LOCALS_NAME;
+  options.views = opts.views;
+  options.async = opts.async;
+  options.destructuredLocals = opts.destructuredLocals;
+  options.legacyInclude = typeof opts.legacyInclude != 'undefined' ? !!opts.legacyInclude : true;
+  // Opt-in: keep locals' prototype chain visible inside `with`. Vulnerable to
+  // prototype-pollution gadgets (Object.prototype.escapeFn, include, etc.) —
+  // default is to strip the prototype chain via a shallow null-proto copy.
+  options.unsafePrototypeLocals = !!opts.unsafePrototypeLocals;
+
+  if (options.strict) {
+    options._with = false;
+  }
+  else {
+    options._with = typeof opts._with != 'undefined' ? opts._with : true;
+  }
+
+  this.opts = options;
+
+  this.regex = this.createRegex();
+}
+
+Template.modes = {
+  EVAL: 'eval',
+  ESCAPED: 'escaped',
+  RAW: 'raw',
+  COMMENT: 'comment',
+  LITERAL: 'literal'
+};
+
+Template.prototype = {
+  createRegex: function () {
+    let str = _REGEX_STRING;
+    let delim = esm_utils.escapeRegExpChars(this.opts.delimiter);
+    let open = esm_utils.escapeRegExpChars(this.opts.openDelimiter);
+    let close = esm_utils.escapeRegExpChars(this.opts.closeDelimiter);
+    str = str.replace(/%/g, delim)
+      .replace(/</g, open)
+      .replace(/>/g, close);
+    return new RegExp(str);
+  },
+
+  compile: function () {
+    /** @type {string} */
+    let src;
+    let fn;
+    let opts = this.opts;
+    let prepended = '';
+    let appended = '';
+    /** @type {EscapeCallback} */
+    let escapeFn = opts.escapeFunction;
+    /** @type {FunctionConstructor} */
+    let ctor;
+    /** @type {string} */
+    let sanitizedFilename = opts.filename ? JSON.stringify(opts.filename) : 'undefined';
+
+    if (!this.source) {
+      this.generateSource();
+      prepended +=
+        `  ${DECLARATION_KEYWORD} __output = "";\n` +
+        '  function __append(s) { if (s !== undefined && s !== null) __output += s }\n';
+      if (opts.outputFunctionName) {
+        if (!_JS_IDENTIFIER.test(opts.outputFunctionName)) {
+          throw new Error('outputFunctionName is not a valid JS identifier.');
+        }
+        prepended += `  ${DECLARATION_KEYWORD} ` + opts.outputFunctionName + ' = __append;' + '\n';
+      }
+      if (opts.localsName && !_JS_IDENTIFIER.test(opts.localsName)) {
+        throw new Error('localsName is not a valid JS identifier.');
+      }
+      if (opts.destructuredLocals && opts.destructuredLocals.length) {
+        let destructuring = `  ${DECLARATION_KEYWORD} __locals = (` + opts.localsName + ' || {}),\n';
+        for (let i = 0; i < opts.destructuredLocals.length; i++) {
+          let name = opts.destructuredLocals[i];
+          if (!_JS_IDENTIFIER.test(name)) {
+            throw new Error('destructuredLocals[' + i + '] is not a valid JS identifier.');
+          }
+          if (i > 0) {
+            destructuring += ',\n  ';
+          }
+          destructuring += name + ' = __locals.' + name;
+        }
+        prepended += destructuring + ';\n';
+      }
+      if (opts._with !== false) {
+        prepended +=  '  with (' + opts.localsName + ' || {}) {' + '\n';
+        appended += '  }' + '\n';
+      }
+      appended += '  return __output;' + '\n';
+      this.source = prepended + this.source + appended;
+    }
+
+    if (opts.compileDebug) {
+      src = `${DECLARATION_KEYWORD} __line = 1` + '\n'
+        + '  , __lines = ' + JSON.stringify(this.templateText) + '\n'
+        + '  , __filename = ' + sanitizedFilename + ';' + '\n'
+        + 'try {' + '\n'
+        + this.source
+        + '} catch (e) {' + '\n'
+        + '  rethrow(e, __lines, __filename, __line, escapeFn);' + '\n'
+        + '}' + '\n';
+    }
+    else {
+      src = this.source;
+    }
+
+    if (opts.strict) {
+      src = '"use strict";\n' + src;
+    }
+    if (opts.debug) {
+      console.log(src);
+    }
+    if (opts.compileDebug && opts.filename) {
+      src = src + '\n'
+        + '//# sourceURL=' + sanitizedFilename + '\n';
+    }
+
+    try {
+      if (opts.async) {
+        // Have to use generated function for this, since in envs without support,
+        // it breaks in parsing
+        try {
+          ctor = (new Function('return (async function(){}).constructor;'))();
+        }
+        catch(e) {
+          if (e instanceof SyntaxError) {
+            throw new Error('This environment does not support async/await');
+          }
+          else {
+            throw e;
+          }
+        }
+      }
+      else {
+        ctor = Function;
+      }
+      fn = new ctor(opts.localsName + ', escapeFn, include, rethrow', src);
+    }
+    catch(e) {
+      // istanbul ignore else
+      if (e instanceof SyntaxError) {
+        if (opts.filename) {
+          e.message += ' in ' + opts.filename;
+        }
+        e.message += ' while compiling ejs\n\n';
+        e.message += 'If the above error is not helpful, you may want to try EJS-Lint:\n';
+        e.message += 'https://github.com/RyanZim/EJS-Lint';
+        if (!opts.async) {
+          e.message += '\n';
+          e.message += 'Or, if you meant to create an async function, pass `async: true` as an option.';
+        }
+      }
+      throw e;
+    }
+
+    // Return a callable function which will execute the function
+    // created by the source-code, with the passed data as locals
+    // Adds a local `include` function which allows full recursive include
+    let returnedFn = function anonymous(data) {
+      let include = function (path, includeData) {
+        let d = esm_utils.shallowCopy(esm_utils.createNullProtoObjWherePossible(), data);
+        if (includeData) {
+          d = esm_utils.shallowCopy(d, includeData);
+        }
+        return includeFile(path, opts)(d);
+      };
+      let locals;
+      if (opts.unsafePrototypeLocals) {
+        locals = data || esm_utils.createNullProtoObjWherePossible();
+      }
+      else {
+        locals = esm_utils.shallowCopy(esm_utils.createNullProtoObjWherePossible(), data);
+      }
+      return fn.apply(opts.context,
+        [locals, escapeFn, include, rethrow]);
+    };
+    if (opts.filename && typeof Object.defineProperty === 'function') {
+      let filename = opts.filename;
+      let basename = external_node_path_.basename(filename, external_node_path_.extname(filename));
+      try {
+        Object.defineProperty(returnedFn, 'name', {
+          value: basename,
+          writable: false,
+          enumerable: false,
+          configurable: true
+        });
+      } catch (e) {/* ignore */}
+    }
+    return returnedFn;
+  },
+
+  generateSource: function () {
+    let opts = this.opts;
+
+    if (opts.rmWhitespace) {
+      // Have to use two separate replace here as `^` and `$` operators don't
+      // work well with `\r` and empty lines don't work well with the `m` flag.
+      this.templateText =
+        this.templateText.replace(/[\r\n]+/g, '\n').replace(/^\s+|\s+$/gm, '');
+    }
+
+    let self = this;
+    let d = this.opts.delimiter;
+    let o = this.opts.openDelimiter;
+    let c = this.opts.closeDelimiter;
+
+    // Slurp spaces and tabs before opening whitespace slurp tag and after closing whitespace slurp tag
+    // Build the tags using custom delimiters: openDelimiter + delimiter + '_' and '_' + delimiter + closeDelimiter
+    let openWhitespaceSlurpTag = esm_utils.escapeRegExpChars(o + d + '_');
+    let closeWhitespaceSlurpTag = esm_utils.escapeRegExpChars('_' + d + c);
+    let openWhitespaceSlurpReplacement = o + d + '_';
+    let closeWhitespaceSlurpReplacement = '_' + d + c;
+    this.templateText =
+      this.templateText.replace(new RegExp('[ \\t]*' + openWhitespaceSlurpTag, 'gm'), openWhitespaceSlurpReplacement)
+        .replace(new RegExp(closeWhitespaceSlurpTag + '[ \\t]*', 'gm'), closeWhitespaceSlurpReplacement);
+
+    let matches = this.parseTemplateText();
+
+    if (matches && matches.length) {
+      matches.forEach(function (line, index) {
+        let closing;
+        // If this is an opening tag, check for closing tags
+        // FIXME: May end up with some false positives here
+        // Better to store modes as k/v with openDelimiter + delimiter as key
+        // Then this can simply check against the map
+        if ( line.indexOf(o + d) === 0        // If it is a tag
+          && line.indexOf(o + d + d) !== 0) { // and is not escaped
+          closing = matches[index + 2];
+          if (!(closing == d + c || closing == '-' + d + c || closing == '_' + d + c)) {
+            throw new Error('Could not find matching close tag for "' + line + '".');
+          }
+        }
+        self.scanLine(line);
+      });
+    }
+
+  },
+
+  parseTemplateText: function () {
+    let str = this.templateText;
+    let pat = this.regex;
+    let result = pat.exec(str);
+    let arr = [];
+    let firstPos;
+
+    while (result) {
+      firstPos = result.index;
+
+      if (firstPos !== 0) {
+        arr.push(str.substring(0, firstPos));
+        str = str.slice(firstPos);
+      }
+
+      arr.push(result[0]);
+      str = str.slice(result[0].length);
+      result = pat.exec(str);
+    }
+
+    if (str) {
+      arr.push(str);
+    }
+
+    return arr;
+  },
+
+  _addOutput: function (line) {
+    if (this.truncate) {
+      // Only replace single leading linebreak in the line after
+      // -%> tag -- this is the single, trailing linebreak
+      // after the tag that the truncation mode replaces
+      // Handle Win / Unix / old Mac linebreaks -- do the \r\n
+      // combo first in the regex-or
+      line = line.replace(/^(?:\r\n|\r|\n)/, '');
+      this.truncate = false;
+    }
+    if (!line) {
+      return line;
+    }
+
+    // Preserve literal slashes
+    line = line.replace(/\\/g, '\\\\');
+
+    // Convert linebreaks
+    line = line.replace(/\n/g, '\\n');
+    line = line.replace(/\r/g, '\\r');
+
+    // Escape double-quotes
+    // - this will be the delimiter during execution
+    line = line.replace(/"/g, '\\"');
+    this.source += '    ; __append("' + line + '")' + '\n';
+  },
+
+  scanLine: function (line) {
+    let self = this;
+    let d = this.opts.delimiter;
+    let o = this.opts.openDelimiter;
+    let c = this.opts.closeDelimiter;
+    let newLineCount = 0;
+
+    newLineCount = (line.split('\n').length - 1);
+
+    switch (line) {
+    case o + d:
+    case o + d + '_':
+      this.mode = Template.modes.EVAL;
+      break;
+    case o + d + '=':
+      this.mode = Template.modes.ESCAPED;
+      break;
+    case o + d + '-':
+      this.mode = Template.modes.RAW;
+      break;
+    case o + d + '#':
+      this.mode = Template.modes.COMMENT;
+      break;
+    case o + d + d:
+      this.mode = Template.modes.LITERAL;
+      this.source += '    ; __append("' + line.replace(o + d + d, o + d) + '")' + '\n';
+      break;
+    case d + d + c:
+      this.mode = Template.modes.LITERAL;
+      this.source += '    ; __append("' + line.replace(d + d + c, d + c) + '")' + '\n';
+      break;
+    case d + c:
+    case '-' + d + c:
+    case '_' + d + c:
+      if (this.mode == Template.modes.LITERAL) {
+        this._addOutput(line);
+      }
+
+      this.mode = null;
+      this.truncate = line.indexOf('-') === 0 || line.indexOf('_') === 0;
+      break;
+    default:
+      // In script mode, depends on type of tag
+      if (this.mode) {
+        // If '//' is found without a line break, add a line break.
+        switch (this.mode) {
+        case Template.modes.EVAL:
+        case Template.modes.ESCAPED:
+        case Template.modes.RAW:
+          if (line.lastIndexOf('//') > line.lastIndexOf('\n')) {
+            line += '\n';
+          }
+        }
+        switch (this.mode) {
+        // Just executing code
+        case Template.modes.EVAL:
+          this.source += '    ; ' + line + '\n';
+          break;
+          // Exec, esc, and output
+        case Template.modes.ESCAPED:
+          this.source += '    ; __append(escapeFn(' + stripSemi(line) + '))' + '\n';
+          break;
+          // Exec and output
+        case Template.modes.RAW:
+          this.source += '    ; __append(' + stripSemi(line) + ')' + '\n';
+          break;
+        case Template.modes.COMMENT:
+          // Do nothing
+          break;
+          // Literal <%% mode, append as raw output
+        case Template.modes.LITERAL:
+          this._addOutput(line);
+          break;
+        }
+      }
+      // In string mode, just add the output
+      else {
+        this._addOutput(line);
+      }
+    }
+
+    if (self.opts.compileDebug && newLineCount) {
+      this.currentLine += newLineCount;
+      this.source += '    ; __line = ' + this.currentLine + '\n';
+    }
+  }
+};
+
+/**
+ * Escape characters reserved in XML.
+ *
+ * This is simply an export of {@link module:utils.escapeXML}.
+ *
+ * If `markup` is `undefined` or `null`, the empty string is returned.
+ *
+ * @param {String} markup Input string
+ * @return {String} Escaped string
+ * @public
+ * @func
+ * */
+ejs.escapeXML = esm_utils.escapeXML;
+
+/**
+ * Express.js support.
+ *
+ * This is an alias for {@link module:ejs.renderFile}, in order to support
+ * Express.js out-of-the-box.
+ *
+ * @func
+ */
+
+ejs.__express = ejs.renderFile;
+
+/* istanbul ignore if */
+if (typeof window != 'undefined') {
+  window.ejs = ejs;
+}
+
+/* harmony default export */ const esm_ejs = (ejs);
+
 
 /***/ })
 

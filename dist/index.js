@@ -66881,9 +66881,9 @@ const run = async () => {
             }
             _actions_core__WEBPACK_IMPORTED_MODULE_2__.debug(`diff: ${json(diff.right)}`);
             info('Changed Files', String(diff.right.length));
-            // If there are no differences, the existing PR is close and the branch is delete.
+            // If there are no differences, close any existing PR and delete the branch.
             if (diff.right.length === 0) {
-                info('Status', 'Skipping this process because the pull request already exists.');
+                info('Status', 'Skipping — no changes detected.');
                 if (existingPr.right !== null) {
                     const res = await repo.closePullRequest(existingPr.right.number)();
                     if (fp_ts_Either__WEBPACK_IMPORTED_MODULE_11__.isLeft(res)) {

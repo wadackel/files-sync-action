@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { render } from 'ejs';
+import ejs from 'ejs';
 import mm from 'micromatch';
 import * as T from 'fp-ts/Either';
 import { expect, test } from 'vitest';
@@ -9,14 +9,14 @@ import { defaultEntryConfig } from './constants.js';
 const repository = 'owner/repo';
 const index = 0;
 
-const subject = render(defaultEntryConfig.commit.subject, { repository, index });
+const subject = ejs.render(defaultEntryConfig.commit.subject, { repository, index });
 
 test('commit.subject renders the repository name', () => {
   expect(subject).toBe('sync files with `owner/repo`');
 });
 
 test('commit.format composes the prefix and the rendered subject', () => {
-  const message = render(defaultEntryConfig.commit.format, {
+  const message = ejs.render(defaultEntryConfig.commit.format, {
     prefix: defaultEntryConfig.commit.prefix,
     subject,
     repository,
@@ -26,7 +26,7 @@ test('commit.format composes the prefix and the rendered subject', () => {
 });
 
 test('branch.format renders the prefix, repository and index', () => {
-  const branch = render(defaultEntryConfig.branch.format, {
+  const branch = ejs.render(defaultEntryConfig.branch.format, {
     prefix: defaultEntryConfig.branch.prefix,
     repository,
     index,
@@ -35,11 +35,11 @@ test('branch.format renders the prefix, repository and index', () => {
 });
 
 test('pull_request.title renders the repository name', () => {
-  expect(render(defaultEntryConfig.pull_request.title, { repository, index })).toBe('Sync files with `owner/repo`');
+  expect(ejs.render(defaultEntryConfig.pull_request.title, { repository, index })).toBe('Sync files with `owner/repo`');
 });
 
 test('pull_request.body renders both file lists with whitespace control', () => {
-  const body = render(defaultEntryConfig.pull_request.body, {
+  const body = ejs.render(defaultEntryConfig.pull_request.body, {
     github: 'https://github.com',
     repository,
     workflow: 'Sync Files',
@@ -76,11 +76,11 @@ test('pull_request.body renders both file lists with whitespace control', () => 
 });
 
 test('render returns a string rather than a promise', () => {
-  expect(typeof render(defaultEntryConfig.pull_request.title, { repository, index })).toBe('string');
+  expect(typeof ejs.render(defaultEntryConfig.pull_request.title, { repository, index })).toBe('string');
 });
 
 test('a template renders values reached through a nested property', () => {
-  expect(render('# <%- repository.name %>', { repository: { name: 'owner/repo' } })).toBe('# owner/repo');
+  expect(ejs.render('# <%- repository.name %>', { repository: { name: 'owner/repo' } })).toBe('# owner/repo');
 });
 
 // Mirrors the exclusion applied in src/main.ts, where each pattern is joined onto `from`.

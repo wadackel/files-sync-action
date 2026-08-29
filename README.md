@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: wadackel/files-sync-action@v3
+      - uses: wadackel/files-sync-action@v4
         with:
           github_token: ${{ secrets.GH_FILES_SYNC_TOKEN }}
 ```
@@ -79,7 +79,7 @@ jobs:
           app-id: ${{ secrets.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           # Optional: Set the permissions for the token (e.g. "owner", "repositories")
-      - uses: wadackel/files-sync-action@v3
+      - uses: wadackel/files-sync-action@v4
         with:
           github_token: ${{ steps.generate_token.outputs.token }}
 ```

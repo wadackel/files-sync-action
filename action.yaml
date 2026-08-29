@@ -23,5 +23,5 @@ outputs:
     description: 'An array of all synchronized file names.'
 
 runs:
-  using: 'node20'
+  using: 'node24'
   main: 'dist/index.js'

@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as core from '@actions/core';
-import { render } from 'ejs';
+import ejs from 'ejs';
 import glob from 'fast-glob';
 import * as A from 'fp-ts/Array';
 import * as T from 'fp-ts/Either';
@@ -111,7 +111,7 @@ const run = async (): Promise<number> => {
                 const raw = await fs.readFile(fpath, 'utf8');
                 const stat = await fs.stat(fpath);
                 const mode = (stat.mode & fs.constants.S_IXUSR) !== 0 ? '100755' : '100644';
-                const content = entry.template !== undefined ? render(raw, entry.template) : raw;
+                const content = entry.template !== undefined ? ejs.render(raw, entry.template) : raw;
                 return {
                   from,
                   to,
@@ -175,7 +175,7 @@ const run = async (): Promise<number> => {
 
       const repo = repository.right;
 
-      const branch = render(cfg.branch.format, {
+      const branch = ejs.render(cfg.branch.format, {
         prefix: cfg.branch.prefix,
         repository: convertValidBranchName(GH_REPOSITORY),
         index: i,
@@ -215,9 +215,9 @@ const run = async (): Promise<number> => {
       const commit = await repo.commit({
         parent,
         branch,
-        message: render(cfg.commit.format, {
+        message: ejs.render(cfg.commit.format, {
           prefix: cfg.commit.prefix,
-          subject: render(cfg.commit.subject, {
+          subject: ejs.render(cfg.commit.subject, {
             repository: GH_REPOSITORY,
             index: i,
           }),
@@ -284,11 +284,11 @@ const run = async (): Promise<number> => {
       // Create Pull Request
       const pr = await repo.createOrUpdatePullRequest({
         number: existingPr.right?.number ?? null,
-        title: render(cfg.pull_request.title, {
+        title: ejs.render(cfg.pull_request.title, {
           repository: GH_REPOSITORY,
           index: i,
         }),
-        body: render([cfg.pull_request.body, PR_FOOTER].join('\n'), {
+        body: ejs.render([cfg.pull_request.body, PR_FOOTER].join('\n'), {
           github: GH_SERVER,
           repository: GH_REPOSITORY,
           workflow: GH_WORKFLOW,
@@ -364,10 +364,10 @@ const run = async (): Promise<number> => {
 
         const cc = mergeCfg.commit;
         if (cc.format) {
-          const message = render(cc.format, {
+          const message = ejs.render(cc.format, {
             prefix: cc.prefix ?? '',
             subject: cc.subject
-              ? render(cc.subject, {
+              ? ejs.render(cc.subject, {
                   repository: GH_REPOSITORY,
                   index: i,
                 })

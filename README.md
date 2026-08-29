@@ -18,7 +18,7 @@ A customizable action that synchronizes files across multiple repositories.
 
 <div align="center">
 
-The following links are the actual PR and Workflow execution result logs:
+The following link is the actual PR produced by a synchronization run:
 
 [Actual PR][demo-pr]
 
@@ -33,6 +33,8 @@ The following links are the actual PR and Workflow execution result logs:
 - :checkered_flag: Supports stable file synchronization even in large repositories.
 - :pencil: Support file customization using [EJS][ejs]
 - :recycle: Supports the deletion of files and folders
+- :twisted_rightwards_arrows: Supports merging the generated PRs automatically
+- :dart: Supports synchronizing to a target branch per repository
 
 ## Usage
 
@@ -51,7 +53,7 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: wadackel/files-sync-action@v4
         with:
           github_token: ${{ secrets.GH_FILES_SYNC_TOKEN }}
@@ -71,10 +73,10 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Generate token
         id: generate_token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
@@ -125,7 +127,7 @@ To use `files-sync-action`, you need to set the following `Repository permission
 | :---------------- | :------------------------------------------------------------------ |
 | **Contents**      | `Read and write`                                                    |
 | **Pull requests** | `Read and write`                                                    |
-| **Metadata**      | `Read and write`                                                    |
+| **Metadata**      | `Read-only` (granted automatically)                                 |
 | **Workflows**     | To synchronize Workflow files: `Read and write`, Other: `No access` |
 
 ## Inputs
@@ -137,7 +139,7 @@ To use `files-sync-action`, you need to set the following `Repository permission
 **Required:** `true`  
 **Default:** n/a
 
-Personal Access Token to use to create file sync and PR. Required if `GITHUB_APP_*` is not specified.
+Fine-grained Personal Access Token or GitHub App installation token used to push sync commits and open pull requests.
 
 ### `github_api_url`
 
@@ -160,18 +162,20 @@ The path for the sync configuration file.
 
 ### `pull_request_urls`
 
-URL array of PRs created to synchronize files.
+URL array of the pull requests created or updated to synchronize files.
 
 ### `synced_files`
 
-An array of all synchronized file names.
+An array of every file path in the synchronized diff, including paths that were deleted.
 <!-- gha-outputs-end -->
 
 ## Sync Configuration
 
-The configuration file for file synchronization can be written in YAML. By default, it refers to `.github/files-sync-config.yaml`. If you want to change the path, please modify the value of `inputs.config_file`.
+The configuration file for file synchronization can be written in YAML. By default, it refers to `.github/files-sync-config.yaml`. If you want to change the path, please modify the value of `inputs.config_file`. When the configured path does not exist, the other extension is tried as well, so `.github/files-sync-config.yml` is picked up by the default setting.
 
 The configuration file consists of a `settings` section, which defines common settings, and a `patterns` section, which defines individual file synchronization patterns. The contents defined in `settings` are inherited by all `patterns`.
+
+Inheritance treats scalar values and lists differently. A pattern overrides an inherited scalar such as `commit.prefix`, but list values such as `reviewers`, `assignees` and `labels` are **concatenated** with the inherited ones. A pattern therefore cannot drop or replace an entry that `settings` provides, and writing an empty list does not clear it. The [`PatternConfig` example](#patternconfig) below inherits `wadackel` as a reviewer and `files-sync` as a label, and adds its own on top of them.
 
 | Key        | Required | Type                   | Description                                                           |
 | :--------- | :------- | :--------------------- | :-------------------------------------------------------------------- |
@@ -210,14 +214,20 @@ settings:
 
       | :chart_with_upwards_trend: Change | :hammer_and_wrench: Synchronizing Repository | :link: Workflow |
       | :-- | :-- | :-- |
-      | <%- changes.length %> files | [<%- repository %>](<%- github %>/<%- repository %>) | [\`<%- workflow %>#<%- run.number %>\`](<%- run.url %>) |
+      | <%- changes.length %> files | [<%- repository %>](<%- github %>/<%- repository %>) | [`<%- workflow %>#<%- run.number %>`](<%- run.url %>) |
 
       ---
 
-      ### Changed Files
+      ### Modified Files
 
       <%_ for (const file of changes) { -%>
-      - <% if (file.from === file.to) { %>\`<%- file.to %>\`<% } else { %>\`<%- file.from %>\` to \`<%- file.to %>\`<% }%>
+      - <% if (file.from === file.to) { %>`<%- file.to %>`<% } else { %>`<%- file.from %>` to `<%- file.to %>`<% }%>
+      <%_ } -%>
+
+      ### Deleted Files
+
+      <%_ for (const file of deleted) { -%>
+      - `<%- file.path %>`
       <%_ } -%>
     reviewers: []
     assignees: []
@@ -226,7 +236,7 @@ settings:
       mode: disabled
       strategy: merge
       delete_branch: false
-      commit: ~
+      commit: {}
 ```
 
 ### `PatternConfig`
@@ -236,7 +246,7 @@ Configure the synchronization pattern for files and directories and the target r
 | Key            | Required | Type                                | Description                                                                                           |
 | :------------- | :------- | :---------------------------------- | :---------------------------------------------------------------------------------------------------- |
 | `files`        | `true`   | Array<string \| [FileConfig]>       | List of files to synchronize. Supports files and directories.                                         |
-| `delete_files` | `true`   | Array<string \| [DeleteFileConfig]> | List of files or directories to delete from repositories the specified repositories.                  |
+| `delete_files` | `false`  | Array<string \| [DeleteFileConfig]> | List of files or directories to delete from the specified repositories.                               |
 | `repositories` | `true`   | Array<string>                       | List of repositories (optionally with target branches) to synchronize the files specified in `files`. |
 | `commit`       | `false`  | [CommitConfig]                      | Various settings related to commits                                                                   |
 | `branch`       | `false`  | [BranchConfig]                      | Various settings related to branches                                                                  |
@@ -269,9 +279,38 @@ patterns:
         - 'A-build'
 ```
 
+#### `template`
+
+`template` is a `PatternConfig` key and cannot be placed under `settings`. When it is omitted, file contents are copied verbatim and no [EJS][ejs] rendering happens at all.
+
+The variables defined here are passed to every file in the same pattern:
+
+```yaml
+patterns:
+  - files:
+      - from: .github/fixtures/README.md
+        to: README.md
+    repositories:
+      - owner/repo1
+    template:
+      repository:
+        name: 'wadackel/files-sync-action'
+        url: 'https://github.com/wadackel/files-sync-action'
+```
+
+The source file references them as it would in any EJS template:
+
+```markdown
+This is a repository for verifying the operation of `<%- repository.name %>`.
+
+Please refer to the [documentation](<%- repository.url %>) for details on the Action.
+```
+
 ### `FileConfig`
 
 Configure the details of the files to synchronize. When synchronizing a directory, you can use `exclude` to exclude only certain file patterns.
+
+Each `exclude` pattern is resolved relative to `from` and matched against the whole path, so `'*.txt'` only excludes text files sitting directly in the directory. Use `'**/*.txt'` to also exclude the ones in subdirectories. Specifying `exclude` on an entry that points at a single file has no effect and logs a warning.
 
 | Key       | Required | Type       | Description                                                                                                                                 |
 | :-------- | :------- | :--------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -339,6 +378,8 @@ The following template variables are available for various keys:
 
 ### `PullRequestConfig`
 
+When a target repository ends up with no changes, no PR is created. Any sync PR left open from a previous run is closed and its synchronization branch is deleted before the Action moves on to the next repository.
+
 | Key         | Required | Type          | Description                                                                                                                                                                                 |
 | :---------- | :------- | :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `disabled`  | `false`  | `boolean`     | Flag to disable PR when synchronizing files. If disabled, file synchronization will only push without creating a PR                                                                         |
@@ -370,8 +411,11 @@ The following template variables are available for various keys:
 | `run.id`     | `string`                         | Execution ID of the Workflow                                               |
 | `run.number` | `string`                         | Execution number of the Workflow                                           |
 | `run.url`    | `string`                         | URL of the Workflow execution log                                          |
-| `changes`    | `{ from: string; to: string }[]` | List of changed files                                                      |
+| `changes`    | `{ from: string; to: string }[]` | List of added or modified files. Deleted paths are not included here       |
+| `deleted`    | `{ path: string }[]`             | List of paths removed by `delete_files`                                    |
 | `index`      | `number`                         | Index of the file synchronization pattern                                  |
+
+A footer crediting `files-sync-action` is appended to the rendered body. It cannot be disabled.
 
 ### `MergeConfig`
 
@@ -381,8 +425,28 @@ Configure the merge of the automatically generated PR when synchronizing files.
 | :-------------- | :------- | :-------------- | :------------------------------------------------------------------------------------------------------------------------------- |
 | `mode`          | `false`  | [MergeMode]     | The mode under which the PR merge is configured                                                                                  |
 | `strategy`      | `false`  | [MergeStrategy] | The strategy to use for merging the automatically generated PR                                                                   |
-| `delete_branch` | `false`  | `boolean`       | Flag to delete the synchronization branch if the automatically generated PR is successfully merged (ignored if `modw` is 'auto') |
+| `delete_branch` | `false`  | `boolean`       | Flag to delete the synchronization branch if the automatically generated PR is successfully merged (ignored if `mode` is 'auto') |
 | `commit`        | `false`  | [CommitConfig]  | Various settings related to merge commits                                                                                        |
+
+Templating runs only when `merge.commit.format` is set. Omit it and the merge uses the commit message GitHub generates by default, ignoring `prefix` and `subject`. Unlike [`CommitConfig`][CommitConfig], `merge.commit.prefix` and `merge.commit.subject` have no defaults and render as empty strings when unset.
+
+The rendered message is split at the first line break: the first line becomes the merge commit headline and the remainder becomes its body.
+
+#### `merge.commit.format`
+
+| Key          | Type     | Description                                                                |
+| :----------- | :------- | :------------------------------------------------------------------------- |
+| `prefix`     | `string` | Merge commit message prefix specified in `merge.commit.prefix`             |
+| `subject`    | `string` | Merge commit message subject specified in `merge.commit.subject`           |
+| `repository` | `string` | Source repository name (the repository where the Action is being executed) |
+| `index`      | `number` | Index of the file synchronization pattern                                  |
+
+#### `merge.commit.subject`
+
+| Key          | Type     | Description                                                                |
+| :----------- | :------- | :------------------------------------------------------------------------- |
+| `repository` | `string` | Source repository name (the repository where the Action is being executed) |
+| `index`      | `number` | Index of the file synchronization pattern                                  |
 
 ### `MergeMode`
 
@@ -392,6 +456,8 @@ Configure the merge of the automatically generated PR when synchronizing files.
 | `immediate` | If possible, the PR is merged immediately                                                                                             |
 | `auto`      | Same as `immediate`, but the PR is marked as "auto-merge" if it cannot be immediately merged                                          |
 | `admin`     | Same as `immediate`, but PRs that are blocked due to repo policy are forcefully merged if the provided token has permissions to do so |
+
+If the target repository has a merge queue enabled, every mode except `admin` behaves as `auto`. A PR that cannot be merged is reported in the log and does not fail the workflow.
 
 ### `MergeStrategy`
 
@@ -481,7 +547,6 @@ $ pnpm build && node test.js
 [micromatch]: https://github.com/micromatch/micromatch
 [fine-grained-pat]: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token#creating-a-fine-grained-personal-access-token
 [demo-pr]: https://github.com/wadackel/files-sync-action-sandbox1/pull/1
-[demo-workflow-log]: https://github.com/wadackel/files-sync-action/actions/runs/4740171900/jobs/8415765398
 [SettingsConfig]: #settingsconfig
 [PatternConfig]: #patternconfig
 [CommitConfig]: #commitconfig
@@ -491,3 +556,4 @@ $ pnpm build && node test.js
 [MergeMode]: #mergemode
 [MergeStrategy]: #mergestrategy
 [FileConfig]: #fileconfig
+[DeleteFileConfig]: #deletefileconfig

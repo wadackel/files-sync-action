@@ -5,7 +5,6 @@
 <!-- gha-description-start -->
 
 A customizable action that synchronizes files across multiple repositories.
-
 <!-- gha-description-end -->
 
 [![Build][badge-build]][build]
@@ -153,7 +152,6 @@ API URL of the GitHub server.
 **Default:** `.github/files-sync-config.yaml`
 
 The path for the sync configuration file.
-
 <!-- gha-inputs-end -->
 
 ## Outputs
@@ -167,7 +165,6 @@ URL array of PRs created to synchronize files.
 ### `synced_files`
 
 An array of all synchronized file names.
-
 <!-- gha-outputs-end -->
 
 ## Sync Configuration

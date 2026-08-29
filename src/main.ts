@@ -92,6 +92,7 @@ const run = async (): Promise<number> => {
               const list = await glob('**/*', {
                 absolute: false,
                 onlyFiles: true,
+                dot: true,
                 cwd: path.join(cwd, file.from),
               });
               paths = list.map((p) => [path.join(file.from, p), path.join(file.to, p)]);

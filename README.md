@@ -137,7 +137,7 @@ To use `files-sync-action`, you need to set the following `Repository permission
 **Required:** `true`  
 **Default:** n/a
 
-Personal Access Token to use to create file sync and PR. Required if `GITHUB_APP_*` is not specified.
+Fine-grained Personal Access Token or GitHub App installation token used to push sync commits and open pull requests.
 
 ### `github_api_url`
 
@@ -160,11 +160,11 @@ The path for the sync configuration file.
 
 ### `pull_request_urls`
 
-URL array of PRs created to synchronize files.
+URL array of the pull requests created or updated to synchronize files.
 
 ### `synced_files`
 
-An array of all synchronized file names.
+An array of every file path in the synchronized diff, including paths that were deleted.
 <!-- gha-outputs-end -->
 
 ## Sync Configuration

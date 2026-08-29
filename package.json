@@ -75,7 +75,7 @@
     "tsx": "4.23.12",
     "type-fest": "5.8.0",
     "typescript": "5.9.3",
-    "vitest": "3.2.7"
+    "vitest": "4.1.11"
   },
   "packageManager": "pnpm@10.34.5"
 }

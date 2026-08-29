@@ -1219,7 +1219,7 @@ exports.createFileSystemAdapter = createFileSystemAdapter;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.statSync = exports.stat = exports.Settings = void 0;
 const async = __nccwpck_require__(3708);
-const sync = __nccwpck_require__(4578);
+const sync = __nccwpck_require__(2197);
 const settings_1 = __nccwpck_require__(8704);
 exports.Settings = settings_1.default;
 function stat(path, optionsOrSettingsOrCallback, callback) {
@@ -1288,7 +1288,7 @@ function callSuccessCallback(callback, result) {
 
 /***/ }),
 
-/***/ 4578:
+/***/ 2197:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -1740,15 +1740,15 @@ exports["default"] = Settings;
 
 /***/ }),
 
-/***/ 316:
+/***/ 8751:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
 
-const stringify = __nccwpck_require__(5269);
-const compile = __nccwpck_require__(2825);
-const expand = __nccwpck_require__(4490);
-const parse = __nccwpck_require__(6747);
+const stringify = __nccwpck_require__(7238);
+const compile = __nccwpck_require__(8690);
+const expand = __nccwpck_require__(8643);
+const parse = __nccwpck_require__(8520);
 
 /**
  * Expand the given pattern or create a regex-compatible string.
@@ -1768,8 +1768,8 @@ const braces = (input, options = {}) => {
   let output = [];
 
   if (Array.isArray(input)) {
-    for (let pattern of input) {
-      let result = braces.create(pattern, options);
+    for (const pattern of input) {
+      const result = braces.create(pattern, options);
       if (Array.isArray(result)) {
         output.push(...result);
       } else {
@@ -1903,7 +1903,7 @@ braces.create = (input, options = {}) => {
     return [input];
   }
 
- return options.expand !== true
+  return options.expand !== true
     ? braces.compile(input, options)
     : braces.expand(input, options);
 };
@@ -1917,39 +1917,41 @@ module.exports = braces;
 
 /***/ }),
 
-/***/ 2825:
+/***/ 8690:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
 
-const fill = __nccwpck_require__(1569);
-const utils = __nccwpck_require__(9777);
+const fill = __nccwpck_require__(706);
+const utils = __nccwpck_require__(1770);
 
 const compile = (ast, options = {}) => {
-  let walk = (node, parent = {}) => {
-    let invalidBlock = utils.isInvalidBrace(parent);
-    let invalidNode = node.invalid === true && options.escapeInvalid === true;
-    let invalid = invalidBlock === true || invalidNode === true;
-    let prefix = options.escapeInvalid === true ? '\\' : '';
+  const walk = (node, parent = {}) => {
+    const invalidBlock = utils.isInvalidBrace(parent);
+    const invalidNode = node.invalid === true && options.escapeInvalid === true;
+    const invalid = invalidBlock === true || invalidNode === true;
+    const prefix = options.escapeInvalid === true ? '\\' : '';
     let output = '';
 
     if (node.isOpen === true) {
       return prefix + node.value;
     }
+
     if (node.isClose === true) {
+      console.log('node.isClose', prefix, node.value);
       return prefix + node.value;
     }
 
     if (node.type === 'open') {
-      return invalid ? (prefix + node.value) : '(';
+      return invalid ? prefix + node.value : '(';
     }
 
     if (node.type === 'close') {
-      return invalid ? (prefix + node.value) : ')';
+      return invalid ? prefix + node.value : ')';
     }
 
     if (node.type === 'comma') {
-      return node.prev.type === 'comma' ? '' : (invalid ? node.value : '|');
+      return node.prev.type === 'comma' ? '' : invalid ? node.value : '|';
     }
 
     if (node.value) {
@@ -1957,8 +1959,8 @@ const compile = (ast, options = {}) => {
     }
 
     if (node.nodes && node.ranges > 0) {
-      let args = utils.reduce(node.nodes);
-      let range = fill(...args, { ...options, wrap: false, toRegex: true });
+      const args = utils.reduce(node.nodes);
+      const range = fill(...args, { ...options, wrap: false, toRegex: true, strictZeros: true });
 
       if (range.length !== 0) {
         return args.length > 1 && range.length > 1 ? `(${range})` : range;
@@ -1966,10 +1968,11 @@ const compile = (ast, options = {}) => {
     }
 
     if (node.nodes) {
-      for (let child of node.nodes) {
+      for (const child of node.nodes) {
         output += walk(child, node);
       }
     }
+
     return output;
   };
 
@@ -1981,13 +1984,13 @@ module.exports = compile;
 
 /***/ }),
 
-/***/ 1005:
+/***/ 7154:
 /***/ ((module) => {
 
 
 
 module.exports = {
-  MAX_LENGTH: 1024 * 64,
+  MAX_LENGTH: 10000,
 
   // Digits
   CHAR_0: '0', /* 0 */
@@ -2045,17 +2048,17 @@ module.exports = {
 
 /***/ }),
 
-/***/ 4490:
+/***/ 8643:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
 
-const fill = __nccwpck_require__(1569);
-const stringify = __nccwpck_require__(5269);
-const utils = __nccwpck_require__(9777);
+const fill = __nccwpck_require__(706);
+const stringify = __nccwpck_require__(7238);
+const utils = __nccwpck_require__(1770);
 
 const append = (queue = '', stash = '', enclose = false) => {
-  let result = [];
+  const result = [];
 
   queue = [].concat(queue);
   stash = [].concat(stash);
@@ -2065,15 +2068,15 @@ const append = (queue = '', stash = '', enclose = false) => {
     return enclose ? utils.flatten(stash).map(ele => `{${ele}}`) : stash;
   }
 
-  for (let item of queue) {
+  for (const item of queue) {
     if (Array.isArray(item)) {
-      for (let value of item) {
+      for (const value of item) {
         result.push(append(value, stash, enclose));
       }
     } else {
       for (let ele of stash) {
         if (enclose === true && typeof ele === 'string') ele = `{${ele}}`;
-        result.push(Array.isArray(ele) ? append(item, ele, enclose) : (item + ele));
+        result.push(Array.isArray(ele) ? append(item, ele, enclose) : item + ele);
       }
     }
   }
@@ -2081,9 +2084,9 @@ const append = (queue = '', stash = '', enclose = false) => {
 };
 
 const expand = (ast, options = {}) => {
-  let rangeLimit = options.rangeLimit === void 0 ? 1000 : options.rangeLimit;
+  const rangeLimit = options.rangeLimit === undefined ? 1000 : options.rangeLimit;
 
-  let walk = (node, parent = {}) => {
+  const walk = (node, parent = {}) => {
     node.queue = [];
 
     let p = parent;
@@ -2105,7 +2108,7 @@ const expand = (ast, options = {}) => {
     }
 
     if (node.nodes && node.ranges > 0) {
-      let args = utils.reduce(node.nodes);
+      const args = utils.reduce(node.nodes);
 
       if (utils.exceedsLimit(...args, options.step, rangeLimit)) {
         throw new RangeError('expanded array length exceeds range limit. Use options.rangeLimit to increase or disable the limit.');
@@ -2121,7 +2124,7 @@ const expand = (ast, options = {}) => {
       return;
     }
 
-    let enclose = utils.encloseBrace(node);
+    const enclose = utils.encloseBrace(node);
     let queue = node.queue;
     let block = node;
 
@@ -2131,7 +2134,7 @@ const expand = (ast, options = {}) => {
     }
 
     for (let i = 0; i < node.nodes.length; i++) {
-      let child = node.nodes[i];
+      const child = node.nodes[i];
 
       if (child.type === 'comma' && node.type === 'brace') {
         if (i === 1) queue.push('');
@@ -2165,12 +2168,12 @@ module.exports = expand;
 
 /***/ }),
 
-/***/ 6747:
+/***/ 8520:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
 
-const stringify = __nccwpck_require__(5269);
+const stringify = __nccwpck_require__(7238);
 
 /**
  * Constants
@@ -2192,7 +2195,7 @@ const {
   CHAR_SINGLE_QUOTE, /* ' */
   CHAR_NO_BREAK_SPACE,
   CHAR_ZERO_WIDTH_NOBREAK_SPACE
-} = __nccwpck_require__(1005);
+} = __nccwpck_require__(7154);
 
 /**
  * parse
@@ -2203,22 +2206,21 @@ const parse = (input, options = {}) => {
     throw new TypeError('Expected a string');
   }
 
-  let opts = options || {};
-  let max = typeof opts.maxLength === 'number' ? Math.min(MAX_LENGTH, opts.maxLength) : MAX_LENGTH;
+  const opts = options || {};
+  const max = typeof opts.maxLength === 'number' ? Math.min(MAX_LENGTH, opts.maxLength) : MAX_LENGTH;
   if (input.length > max) {
     throw new SyntaxError(`Input length (${input.length}), exceeds max characters (${max})`);
   }
 
-  let ast = { type: 'root', input, nodes: [] };
-  let stack = [ast];
+  const ast = { type: 'root', input, nodes: [] };
+  const stack = [ast];
   let block = ast;
   let prev = ast;
   let brackets = 0;
-  let length = input.length;
+  const length = input.length;
   let index = 0;
   let depth = 0;
   let value;
-  let memo = {};
 
   /**
    * Helpers
@@ -2281,7 +2283,6 @@ const parse = (input, options = {}) => {
     if (value === CHAR_LEFT_SQUARE_BRACKET) {
       brackets++;
 
-      let closed = true;
       let next;
 
       while (index < length && (next = advance())) {
@@ -2337,7 +2338,7 @@ const parse = (input, options = {}) => {
      */
 
     if (value === CHAR_DOUBLE_QUOTE || value === CHAR_SINGLE_QUOTE || value === CHAR_BACKTICK) {
-      let open = value;
+      const open = value;
       let next;
 
       if (options.keepQuotes !== true) {
@@ -2369,8 +2370,8 @@ const parse = (input, options = {}) => {
     if (value === CHAR_LEFT_CURLY_BRACE) {
       depth++;
 
-      let dollar = prev.value && prev.value.slice(-1) === '$' || block.dollar === true;
-      let brace = {
+      const dollar = prev.value && prev.value.slice(-1) === '$' || block.dollar === true;
+      const brace = {
         type: 'brace',
         open: true,
         close: false,
@@ -2397,7 +2398,7 @@ const parse = (input, options = {}) => {
         continue;
       }
 
-      let type = 'close';
+      const type = 'close';
       block = stack.pop();
       block.close = true;
 
@@ -2415,7 +2416,7 @@ const parse = (input, options = {}) => {
     if (value === CHAR_COMMA && depth > 0) {
       if (block.ranges > 0) {
         block.ranges = 0;
-        let open = block.nodes.shift();
+        const open = block.nodes.shift();
         block.nodes = [open, { type: 'text', value: stringify(block) }];
       }
 
@@ -2429,7 +2430,7 @@ const parse = (input, options = {}) => {
      */
 
     if (value === CHAR_DOT && depth > 0 && block.commas === 0) {
-      let siblings = block.nodes;
+      const siblings = block.nodes;
 
       if (depth === 0 || siblings.length === 0) {
         push({ type: 'text', value });
@@ -2456,7 +2457,7 @@ const parse = (input, options = {}) => {
       if (prev.type === 'range') {
         siblings.pop();
 
-        let before = siblings[siblings.length - 1];
+        const before = siblings[siblings.length - 1];
         before.value += prev.value + value;
         prev = before;
         block.ranges--;
@@ -2489,8 +2490,8 @@ const parse = (input, options = {}) => {
       });
 
       // get the location of the block on parent.nodes (block's siblings)
-      let parent = stack[stack.length - 1];
-      let index = parent.nodes.indexOf(block);
+      const parent = stack[stack.length - 1];
+      const index = parent.nodes.indexOf(block);
       // replace the (invalid) block with it's nodes
       parent.nodes.splice(index, 1, ...block.nodes);
     }
@@ -2505,17 +2506,17 @@ module.exports = parse;
 
 /***/ }),
 
-/***/ 5269:
+/***/ 7238:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
 
-const utils = __nccwpck_require__(9777);
+const utils = __nccwpck_require__(1770);
 
 module.exports = (ast, options = {}) => {
-  let stringify = (node, parent = {}) => {
-    let invalidBlock = options.escapeInvalid && utils.isInvalidBrace(parent);
-    let invalidNode = node.invalid === true && options.escapeInvalid === true;
+  const stringify = (node, parent = {}) => {
+    const invalidBlock = options.escapeInvalid && utils.isInvalidBrace(parent);
+    const invalidNode = node.invalid === true && options.escapeInvalid === true;
     let output = '';
 
     if (node.value) {
@@ -2530,7 +2531,7 @@ module.exports = (ast, options = {}) => {
     }
 
     if (node.nodes) {
-      for (let child of node.nodes) {
+      for (const child of node.nodes) {
         output += stringify(child);
       }
     }
@@ -2544,7 +2545,7 @@ module.exports = (ast, options = {}) => {
 
 /***/ }),
 
-/***/ 9777:
+/***/ 1770:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -2580,7 +2581,7 @@ exports.exceedsLimit = (min, max, step = 1, limit) => {
  */
 
 exports.escapeNode = (block, n = 0, type) => {
-  let node = block.nodes[n];
+  const node = block.nodes[n];
   if (!node) return;
 
   if ((type && node.type === type) || node.type === 'open' || node.type === 'close') {
@@ -2649,13 +2650,23 @@ exports.reduce = nodes => nodes.reduce((acc, node) => {
 
 exports.flatten = (...args) => {
   const result = [];
+
   const flat = arr => {
     for (let i = 0; i < arr.length; i++) {
-      let ele = arr[i];
-      Array.isArray(ele) ? flat(ele, result) : ele !== void 0 && result.push(ele);
+      const ele = arr[i];
+
+      if (Array.isArray(ele)) {
+        flat(ele);
+        continue;
+      }
+
+      if (ele !== undefined) {
+        result.push(ele);
+      }
     }
     return result;
   };
+
   flat(args);
   return result;
 };
@@ -2663,7 +2674,7 @@ exports.flatten = (...args) => {
 
 /***/ }),
 
-/***/ 9568:
+/***/ 8192:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 /*
@@ -2715,11 +2726,11 @@ exports.flatten = (...args) => {
 
 var fs = __nccwpck_require__(9896);
 var path = __nccwpck_require__(6928);
-var utils = __nccwpck_require__(2197);
+var utils = __nccwpck_require__(9061);
 
 var scopeOptionWarned = false;
 /** @type {string} */
-var _VERSION_STRING = (__nccwpck_require__(53)/* .version */ .rE);
+var _VERSION_STRING = (__nccwpck_require__(2025)/* .version */ .rE);
 var _DEFAULT_OPEN_DELIMITER = '<';
 var _DEFAULT_CLOSE_DELIMITER = '>';
 var _DEFAULT_DELIMITER = '%';
@@ -3174,8 +3185,8 @@ exports.clearCache = function () {
   exports.cache.reset();
 };
 
-function Template(text, opts) {
-  opts = opts || utils.createNullProtoObjWherePossible();
+function Template(text, optsParam) {
+  var opts = utils.hasOwnOnlyObject(optsParam);
   var options = utils.createNullProtoObjWherePossible();
   this.templateText = text;
   /** @type {string | null} */
@@ -3619,9 +3630,10 @@ if (typeof window != 'undefined') {
 }
 
 
+
 /***/ }),
 
-/***/ 2197:
+/***/ 9061:
 /***/ ((__unused_webpack_module, exports) => {
 
 /*
@@ -3864,22 +3876,30 @@ exports.createNullProtoObjWherePossible = (function () {
   };
 })();
 
+exports.hasOwnOnlyObject = function (obj) {
+  var o = exports.createNullProtoObjWherePossible();
+  for (var p in obj) {
+    if (hasOwn(obj, p)) {
+      o[p] = obj[p];
+    }
+  }
+  return o;
+};
 
 
 
 /***/ }),
 
-/***/ 6708:
+/***/ 5161:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
-const taskManager = __nccwpck_require__(3787);
-const patternManager = __nccwpck_require__(4986);
-const async_1 = __nccwpck_require__(7937);
-const stream_1 = __nccwpck_require__(6613);
-const sync_1 = __nccwpck_require__(4954);
-const settings_1 = __nccwpck_require__(8315);
-const utils = __nccwpck_require__(8150);
+const taskManager = __nccwpck_require__(3088);
+const async_1 = __nccwpck_require__(8656);
+const stream_1 = __nccwpck_require__(3994);
+const sync_1 = __nccwpck_require__(3473);
+const settings_1 = __nccwpck_require__(532);
+const utils = __nccwpck_require__(315);
 async function FastGlob(source, options) {
     assertPatternsInput(source);
     const works = getWorks(source, async_1.default, options);
@@ -3889,6 +3909,10 @@ async function FastGlob(source, options) {
 // https://github.com/typescript-eslint/typescript-eslint/issues/60
 // eslint-disable-next-line no-redeclare
 (function (FastGlob) {
+    FastGlob.glob = FastGlob;
+    FastGlob.globSync = sync;
+    FastGlob.globStream = stream;
+    FastGlob.async = FastGlob;
     function sync(source, options) {
         assertPatternsInput(source);
         const works = getWorks(source, sync_1.default, options);
@@ -3908,7 +3932,7 @@ async function FastGlob(source, options) {
     FastGlob.stream = stream;
     function generateTasks(source, options) {
         assertPatternsInput(source);
-        const patterns = patternManager.transform([].concat(source));
+        const patterns = [].concat(source);
         const settings = new settings_1.default(options);
         return taskManager.generate(patterns, settings);
     }
@@ -3924,9 +3948,40 @@ async function FastGlob(source, options) {
         return utils.path.escape(source);
     }
     FastGlob.escapePath = escapePath;
+    function convertPathToPattern(source) {
+        assertPatternsInput(source);
+        return utils.path.convertPathToPattern(source);
+    }
+    FastGlob.convertPathToPattern = convertPathToPattern;
+    let posix;
+    (function (posix) {
+        function escapePath(source) {
+            assertPatternsInput(source);
+            return utils.path.escapePosixPath(source);
+        }
+        posix.escapePath = escapePath;
+        function convertPathToPattern(source) {
+            assertPatternsInput(source);
+            return utils.path.convertPosixPathToPattern(source);
+        }
+        posix.convertPathToPattern = convertPathToPattern;
+    })(posix = FastGlob.posix || (FastGlob.posix = {}));
+    let win32;
+    (function (win32) {
+        function escapePath(source) {
+            assertPatternsInput(source);
+            return utils.path.escapeWindowsPath(source);
+        }
+        win32.escapePath = escapePath;
+        function convertPathToPattern(source) {
+            assertPatternsInput(source);
+            return utils.path.convertWindowsPathToPattern(source);
+        }
+        win32.convertPathToPattern = convertPathToPattern;
+    })(win32 = FastGlob.win32 || (FastGlob.win32 = {}));
 })(FastGlob || (FastGlob = {}));
 function getWorks(source, _Provider, options) {
-    const patterns = patternManager.transform([].concat(source));
+    const patterns = [].concat(source);
     const settings = new settings_1.default(options);
     const tasks = taskManager.generate(patterns, settings);
     const provider = new _Provider(settings);
@@ -3944,44 +3999,18 @@ module.exports = FastGlob;
 
 /***/ }),
 
-/***/ 4986:
-/***/ ((__unused_webpack_module, exports) => {
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.removeDuplicateSlashes = exports.transform = void 0;
-/**
- * Matches a sequence of two or more consecutive slashes, excluding the first two slashes at the beginning of the string.
- * The latter is due to the presence of the device path at the beginning of the UNC path.
- * @todo rewrite to negative lookbehind with the next major release.
- */
-const DOUBLE_SLASH_RE = /(?!^)\/{2,}/g;
-function transform(patterns) {
-    return patterns.map((pattern) => removeDuplicateSlashes(pattern));
-}
-exports.transform = transform;
-/**
- * This package only works with forward slashes as a path separator.
- * Because of this, we cannot use the standard `path.normalize` method, because on Windows platform it will use of backslashes.
- */
-function removeDuplicateSlashes(pattern) {
-    return pattern.replace(DOUBLE_SLASH_RE, '/');
-}
-exports.removeDuplicateSlashes = removeDuplicateSlashes;
-
-
-/***/ }),
-
-/***/ 3787:
+/***/ 3088:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.convertPatternGroupToTask = exports.convertPatternGroupsToTasks = exports.groupPatternsByBaseDirectory = exports.getNegativePatternsAsPositive = exports.getPositivePatterns = exports.convertPatternsToTasks = exports.generate = void 0;
-const utils = __nccwpck_require__(8150);
-function generate(patterns, settings) {
+const utils = __nccwpck_require__(315);
+function generate(input, settings) {
+    const patterns = processPatterns(input, settings);
+    const ignore = processPatterns(settings.ignore, settings);
     const positivePatterns = getPositivePatterns(patterns);
-    const negativePatterns = getNegativePatternsAsPositive(patterns, settings.ignore);
+    const negativePatterns = getNegativePatternsAsPositive(patterns, ignore);
     const staticPatterns = positivePatterns.filter((pattern) => utils.pattern.isStaticPattern(pattern, settings));
     const dynamicPatterns = positivePatterns.filter((pattern) => utils.pattern.isDynamicPattern(pattern, settings));
     const staticTasks = convertPatternsToTasks(staticPatterns, negativePatterns, /* dynamic */ false);
@@ -3989,6 +4018,34 @@ function generate(patterns, settings) {
     return staticTasks.concat(dynamicTasks);
 }
 exports.generate = generate;
+function processPatterns(input, settings) {
+    let patterns = input;
+    /**
+     * The original pattern like `{,*,**,a/*}` can lead to problems checking the depth when matching entry
+     * and some problems with the micromatch package (see fast-glob issues: #365, #394).
+     *
+     * To solve this problem, we expand all patterns containing brace expansion. This can lead to a slight slowdown
+     * in matching in the case of a large set of patterns after expansion.
+     */
+    if (settings.braceExpansion) {
+        patterns = utils.pattern.expandPatternsWithBraceExpansion(patterns);
+    }
+    /**
+     * If the `baseNameMatch` option is enabled, we must add globstar to patterns, so that they can be used
+     * at any nesting level.
+     *
+     * We do this here, because otherwise we have to complicate the filtering logic. For example, we need to change
+     * the pattern in the filter before creating a regular expression. There is no need to change the patterns
+     * in the application. Only on the input.
+     */
+    if (settings.baseNameMatch) {
+        patterns = patterns.map((pattern) => pattern.includes('/') ? pattern : `**/${pattern}`);
+    }
+    /**
+     * This method also removes duplicate slashes that may have been in the pattern or formed as a result of expansion.
+     */
+    return patterns.map((pattern) => utils.pattern.removeDuplicateSlashes(pattern));
+}
 /**
  * Returns tasks grouped by basic pattern directories.
  *
@@ -4059,13 +4116,13 @@ exports.convertPatternGroupToTask = convertPatternGroupToTask;
 
 /***/ }),
 
-/***/ 7937:
+/***/ 8656:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const async_1 = __nccwpck_require__(8527);
-const provider_1 = __nccwpck_require__(6540);
+const async_1 = __nccwpck_require__(2690);
+const provider_1 = __nccwpck_require__(7335);
 class ProviderAsync extends provider_1.default {
     constructor() {
         super(...arguments);
@@ -4089,13 +4146,13 @@ exports["default"] = ProviderAsync;
 
 /***/ }),
 
-/***/ 9523:
+/***/ 9668:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const utils = __nccwpck_require__(8150);
-const partial_1 = __nccwpck_require__(6840);
+const utils = __nccwpck_require__(315);
+const partial_1 = __nccwpck_require__(2923);
 class DeepFilter {
     constructor(_settings, _micromatchOptions) {
         this._settings = _settings;
@@ -4158,12 +4215,12 @@ exports["default"] = DeepFilter;
 
 /***/ }),
 
-/***/ 241:
+/***/ 6328:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const utils = __nccwpck_require__(8150);
+const utils = __nccwpck_require__(315);
 class EntryFilter {
     constructor(_settings, _micromatchOptions) {
         this._settings = _settings;
@@ -4171,33 +4228,37 @@ class EntryFilter {
         this.index = new Map();
     }
     getFilter(positive, negative) {
-        const positiveRe = utils.pattern.convertPatternsToRe(positive, this._micromatchOptions);
-        const negativeRe = utils.pattern.convertPatternsToRe(negative, this._micromatchOptions);
-        return (entry) => this._filter(entry, positiveRe, negativeRe);
+        const [absoluteNegative, relativeNegative] = utils.pattern.partitionAbsoluteAndRelative(negative);
+        const patterns = {
+            positive: {
+                all: utils.pattern.convertPatternsToRe(positive, this._micromatchOptions)
+            },
+            negative: {
+                absolute: utils.pattern.convertPatternsToRe(absoluteNegative, Object.assign(Object.assign({}, this._micromatchOptions), { dot: true })),
+                relative: utils.pattern.convertPatternsToRe(relativeNegative, Object.assign(Object.assign({}, this._micromatchOptions), { dot: true }))
+            }
+        };
+        return (entry) => this._filter(entry, patterns);
     }
-    _filter(entry, positiveRe, negativeRe) {
-        if (this._settings.unique && this._isDuplicateEntry(entry)) {
+    _filter(entry, patterns) {
+        const filepath = utils.path.removeLeadingDotSegment(entry.path);
+        if (this._settings.unique && this._isDuplicateEntry(filepath)) {
             return false;
         }
         if (this._onlyFileFilter(entry) || this._onlyDirectoryFilter(entry)) {
             return false;
         }
-        if (this._isSkippedByAbsoluteNegativePatterns(entry.path, negativeRe)) {
-            return false;
-        }
-        const filepath = this._settings.baseNameMatch ? entry.name : entry.path;
-        const isDirectory = entry.dirent.isDirectory();
-        const isMatched = this._isMatchToPatterns(filepath, positiveRe, isDirectory) && !this._isMatchToPatterns(entry.path, negativeRe, isDirectory);
+        const isMatched = this._isMatchToPatternsSet(filepath, patterns, entry.dirent.isDirectory());
         if (this._settings.unique && isMatched) {
-            this._createIndexRecord(entry);
+            this._createIndexRecord(filepath);
         }
         return isMatched;
     }
-    _isDuplicateEntry(entry) {
-        return this.index.has(entry.path);
+    _isDuplicateEntry(filepath) {
+        return this.index.has(filepath);
     }
-    _createIndexRecord(entry) {
-        this.index.set(entry.path, undefined);
+    _createIndexRecord(filepath) {
+        this.index.set(filepath, undefined);
     }
     _onlyFileFilter(entry) {
         return this._settings.onlyFiles && !entry.dirent.isFile();
@@ -4205,15 +4266,32 @@ class EntryFilter {
     _onlyDirectoryFilter(entry) {
         return this._settings.onlyDirectories && !entry.dirent.isDirectory();
     }
-    _isSkippedByAbsoluteNegativePatterns(entryPath, patternsRe) {
-        if (!this._settings.absolute) {
+    _isMatchToPatternsSet(filepath, patterns, isDirectory) {
+        const isMatched = this._isMatchToPatterns(filepath, patterns.positive.all, isDirectory);
+        if (!isMatched) {
             return false;
         }
-        const fullpath = utils.path.makeAbsolute(this._settings.cwd, entryPath);
-        return utils.pattern.matchAny(fullpath, patternsRe);
+        const isMatchedByRelativeNegative = this._isMatchToPatterns(filepath, patterns.negative.relative, isDirectory);
+        if (isMatchedByRelativeNegative) {
+            return false;
+        }
+        const isMatchedByAbsoluteNegative = this._isMatchToAbsoluteNegative(filepath, patterns.negative.absolute, isDirectory);
+        if (isMatchedByAbsoluteNegative) {
+            return false;
+        }
+        return true;
     }
-    _isMatchToPatterns(entryPath, patternsRe, isDirectory) {
-        const filepath = utils.path.removeLeadingDotSegment(entryPath);
+    _isMatchToAbsoluteNegative(filepath, patternsRe, isDirectory) {
+        if (patternsRe.length === 0) {
+            return false;
+        }
+        const fullpath = utils.path.makeAbsolute(this._settings.cwd, filepath);
+        return this._isMatchToPatterns(fullpath, patternsRe, isDirectory);
+    }
+    _isMatchToPatterns(filepath, patternsRe, isDirectory) {
+        if (patternsRe.length === 0) {
+            return false;
+        }
         // Trying to match files and directories by patterns.
         const isMatched = utils.pattern.matchAny(filepath, patternsRe);
         // A pattern with a trailling slash can be used for directory matching.
@@ -4229,12 +4307,12 @@ exports["default"] = EntryFilter;
 
 /***/ }),
 
-/***/ 9855:
+/***/ 9538:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const utils = __nccwpck_require__(8150);
+const utils = __nccwpck_require__(315);
 class ErrorFilter {
     constructor(_settings) {
         this._settings = _settings;
@@ -4251,12 +4329,12 @@ exports["default"] = ErrorFilter;
 
 /***/ }),
 
-/***/ 3415:
+/***/ 852:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const utils = __nccwpck_require__(8150);
+const utils = __nccwpck_require__(315);
 class Matcher {
     constructor(_patterns, _settings, _micromatchOptions) {
         this._patterns = _patterns;
@@ -4266,12 +4344,7 @@ class Matcher {
         this._fillStorage();
     }
     _fillStorage() {
-        /**
-         * The original pattern may include `{,*,**,a/*}`, which will lead to problems with matching (unresolved level).
-         * So, before expand patterns with brace expansion into separated patterns.
-         */
-        const patterns = utils.pattern.expandPatternsWithBraceExpansion(this._patterns);
-        for (const pattern of patterns) {
+        for (const pattern of this._patterns) {
             const segments = this._getPatternSegments(pattern);
             const sections = this._splitSegmentsIntoSections(segments);
             this._storage.push({
@@ -4308,12 +4381,12 @@ exports["default"] = Matcher;
 
 /***/ }),
 
-/***/ 6840:
+/***/ 2923:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const matcher_1 = __nccwpck_require__(3415);
+const matcher_1 = __nccwpck_require__(852);
 class PartialMatcher extends matcher_1.default {
     match(filepath) {
         const parts = filepath.split('/');
@@ -4353,16 +4426,16 @@ exports["default"] = PartialMatcher;
 
 /***/ }),
 
-/***/ 6540:
+/***/ 7335:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const path = __nccwpck_require__(6928);
-const deep_1 = __nccwpck_require__(9523);
-const entry_1 = __nccwpck_require__(241);
-const error_1 = __nccwpck_require__(9855);
-const entry_2 = __nccwpck_require__(3970);
+const deep_1 = __nccwpck_require__(9668);
+const entry_1 = __nccwpck_require__(6328);
+const error_1 = __nccwpck_require__(9538);
+const entry_2 = __nccwpck_require__(745);
 class Provider {
     constructor(_settings) {
         this._settings = _settings;
@@ -4408,14 +4481,14 @@ exports["default"] = Provider;
 
 /***/ }),
 
-/***/ 6613:
+/***/ 3994:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const stream_1 = __nccwpck_require__(2203);
-const stream_2 = __nccwpck_require__(1667);
-const provider_1 = __nccwpck_require__(6540);
+const stream_2 = __nccwpck_require__(1036);
+const provider_1 = __nccwpck_require__(7335);
 class ProviderStream extends provider_1.default {
     constructor() {
         super(...arguments);
@@ -4446,13 +4519,13 @@ exports["default"] = ProviderStream;
 
 /***/ }),
 
-/***/ 4954:
+/***/ 3473:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const sync_1 = __nccwpck_require__(8052);
-const provider_1 = __nccwpck_require__(6540);
+const sync_1 = __nccwpck_require__(4631);
+const provider_1 = __nccwpck_require__(7335);
 class ProviderSync extends provider_1.default {
     constructor() {
         super(...arguments);
@@ -4476,12 +4549,12 @@ exports["default"] = ProviderSync;
 
 /***/ }),
 
-/***/ 3970:
+/***/ 745:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const utils = __nccwpck_require__(8150);
+const utils = __nccwpck_require__(315);
 class EntryTransformer {
     constructor(_settings) {
         this._settings = _settings;
@@ -4509,14 +4582,14 @@ exports["default"] = EntryTransformer;
 
 /***/ }),
 
-/***/ 8527:
+/***/ 2690:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const fsWalk = __nccwpck_require__(9009);
-const reader_1 = __nccwpck_require__(7836);
-const stream_1 = __nccwpck_require__(1667);
+const reader_1 = __nccwpck_require__(4927);
+const stream_1 = __nccwpck_require__(1036);
 class ReaderAsync extends reader_1.default {
     constructor() {
         super(...arguments);
@@ -4551,14 +4624,14 @@ exports["default"] = ReaderAsync;
 
 /***/ }),
 
-/***/ 7836:
+/***/ 4927:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const path = __nccwpck_require__(6928);
 const fsStat = __nccwpck_require__(7597);
-const utils = __nccwpck_require__(8150);
+const utils = __nccwpck_require__(315);
 class Reader {
     constructor(_settings) {
         this._settings = _settings;
@@ -4591,7 +4664,7 @@ exports["default"] = Reader;
 
 /***/ }),
 
-/***/ 1667:
+/***/ 1036:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
@@ -4599,7 +4672,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const stream_1 = __nccwpck_require__(2203);
 const fsStat = __nccwpck_require__(7597);
 const fsWalk = __nccwpck_require__(9009);
-const reader_1 = __nccwpck_require__(7836);
+const reader_1 = __nccwpck_require__(4927);
 class ReaderStream extends reader_1.default {
     constructor() {
         super(...arguments);
@@ -4653,14 +4726,14 @@ exports["default"] = ReaderStream;
 
 /***/ }),
 
-/***/ 8052:
+/***/ 4631:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const fsStat = __nccwpck_require__(7597);
 const fsWalk = __nccwpck_require__(9009);
-const reader_1 = __nccwpck_require__(7836);
+const reader_1 = __nccwpck_require__(4927);
 class ReaderSync extends reader_1.default {
     constructor() {
         super(...arguments);
@@ -4703,7 +4776,7 @@ exports["default"] = ReaderSync;
 
 /***/ }),
 
-/***/ 8315:
+/***/ 532:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
@@ -4754,6 +4827,8 @@ class Settings {
         if (this.stats) {
             this.objectMode = true;
         }
+        // Remove the cast to the array in the next major (#404).
+        this.ignore = [].concat(this.ignore);
     }
     _getValue(option, value) {
         return option === undefined ? value : option;
@@ -4767,7 +4842,7 @@ exports["default"] = Settings;
 
 /***/ }),
 
-/***/ 3355:
+/***/ 5966:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -4796,7 +4871,7 @@ exports.splitWhen = splitWhen;
 
 /***/ }),
 
-/***/ 9210:
+/***/ 7747:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -4810,7 +4885,7 @@ exports.isEnoentCodeError = isEnoentCodeError;
 
 /***/ }),
 
-/***/ 9135:
+/***/ 6040:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -4836,39 +4911,58 @@ exports.createDirentFromStats = createDirentFromStats;
 
 /***/ }),
 
-/***/ 8150:
+/***/ 315:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.string = exports.stream = exports.pattern = exports.path = exports.fs = exports.errno = exports.array = void 0;
-const array = __nccwpck_require__(3355);
+const array = __nccwpck_require__(5966);
 exports.array = array;
-const errno = __nccwpck_require__(9210);
+const errno = __nccwpck_require__(7747);
 exports.errno = errno;
-const fs = __nccwpck_require__(9135);
+const fs = __nccwpck_require__(6040);
 exports.fs = fs;
-const path = __nccwpck_require__(1999);
+const path = __nccwpck_require__(7940);
 exports.path = path;
-const pattern = __nccwpck_require__(6052);
+const pattern = __nccwpck_require__(9741);
 exports.pattern = pattern;
-const stream = __nccwpck_require__(836);
+const stream = __nccwpck_require__(2559);
 exports.stream = stream;
-const string = __nccwpck_require__(5525);
+const string = __nccwpck_require__(3266);
 exports.string = string;
 
 
 /***/ }),
 
-/***/ 1999:
+/***/ 7940:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.removeLeadingDotSegment = exports.escape = exports.makeAbsolute = exports.unixify = void 0;
+exports.convertPosixPathToPattern = exports.convertWindowsPathToPattern = exports.convertPathToPattern = exports.escapePosixPath = exports.escapeWindowsPath = exports.escape = exports.removeLeadingDotSegment = exports.makeAbsolute = exports.unixify = void 0;
+const os = __nccwpck_require__(857);
 const path = __nccwpck_require__(6928);
+const IS_WINDOWS_PLATFORM = os.platform() === 'win32';
 const LEADING_DOT_SEGMENT_CHARACTERS_COUNT = 2; // ./ or .\\
-const UNESCAPED_GLOB_SYMBOLS_RE = /(\\?)([()*?[\]{|}]|^!|[!+@](?=\())/g;
+/**
+ * All non-escaped special characters.
+ * Posix: ()*?[]{|}, !+@ before (, ! at the beginning, \\ before non-special characters.
+ * Windows: (){}[], !+@ before (, ! at the beginning.
+ */
+const POSIX_UNESCAPED_GLOB_SYMBOLS_RE = /(\\?)([()*?[\]{|}]|^!|[!+@](?=\()|\\(?![!()*+?@[\]{|}]))/g;
+const WINDOWS_UNESCAPED_GLOB_SYMBOLS_RE = /(\\?)([()[\]{}]|^!|[!+@](?=\())/g;
+/**
+ * The device path (\\.\ or \\?\).
+ * https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats#dos-device-paths
+ */
+const DOS_DEVICE_PATH_RE = /^\\\\([.?])/;
+/**
+ * All backslashes except those escaping special characters.
+ * Windows: !()+@{}
+ * https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions
+ */
+const WINDOWS_BACKSLASHES_RE = /\\(?![!()+@[\]{}])/g;
 /**
  * Designed to work only with simple paths: `dir\\file`.
  */
@@ -4880,10 +4974,6 @@ function makeAbsolute(cwd, filepath) {
     return path.resolve(cwd, filepath);
 }
 exports.makeAbsolute = makeAbsolute;
-function escape(pattern) {
-    return pattern.replace(UNESCAPED_GLOB_SYMBOLS_RE, '\\$2');
-}
-exports.escape = escape;
 function removeLeadingDotSegment(entry) {
     // We do not use `startsWith` because this is 10x slower than current implementation for some cases.
     // eslint-disable-next-line @typescript-eslint/prefer-string-starts-ends-with
@@ -4896,19 +4986,39 @@ function removeLeadingDotSegment(entry) {
     return entry;
 }
 exports.removeLeadingDotSegment = removeLeadingDotSegment;
+exports.escape = IS_WINDOWS_PLATFORM ? escapeWindowsPath : escapePosixPath;
+function escapeWindowsPath(pattern) {
+    return pattern.replace(WINDOWS_UNESCAPED_GLOB_SYMBOLS_RE, '\\$2');
+}
+exports.escapeWindowsPath = escapeWindowsPath;
+function escapePosixPath(pattern) {
+    return pattern.replace(POSIX_UNESCAPED_GLOB_SYMBOLS_RE, '\\$2');
+}
+exports.escapePosixPath = escapePosixPath;
+exports.convertPathToPattern = IS_WINDOWS_PLATFORM ? convertWindowsPathToPattern : convertPosixPathToPattern;
+function convertWindowsPathToPattern(filepath) {
+    return escapeWindowsPath(filepath)
+        .replace(DOS_DEVICE_PATH_RE, '//$1')
+        .replace(WINDOWS_BACKSLASHES_RE, '/');
+}
+exports.convertWindowsPathToPattern = convertWindowsPathToPattern;
+function convertPosixPathToPattern(filepath) {
+    return escapePosixPath(filepath);
+}
+exports.convertPosixPathToPattern = convertPosixPathToPattern;
 
 
 /***/ }),
 
-/***/ 6052:
+/***/ 9741:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.matchAny = exports.convertPatternsToRe = exports.makeRe = exports.getPatternParts = exports.expandBraceExpansion = exports.expandPatternsWithBraceExpansion = exports.isAffectDepthOfReadingPattern = exports.endsWithSlashGlobStar = exports.hasGlobStar = exports.getBaseDirectory = exports.isPatternRelatedToParentDirectory = exports.getPatternsOutsideCurrentDirectory = exports.getPatternsInsideCurrentDirectory = exports.getPositivePatterns = exports.getNegativePatterns = exports.isPositivePattern = exports.isNegativePattern = exports.convertToNegativePattern = exports.convertToPositivePattern = exports.isDynamicPattern = exports.isStaticPattern = void 0;
+exports.isAbsolute = exports.partitionAbsoluteAndRelative = exports.removeDuplicateSlashes = exports.matchAny = exports.convertPatternsToRe = exports.makeRe = exports.getPatternParts = exports.expandBraceExpansion = exports.expandPatternsWithBraceExpansion = exports.isAffectDepthOfReadingPattern = exports.endsWithSlashGlobStar = exports.hasGlobStar = exports.getBaseDirectory = exports.isPatternRelatedToParentDirectory = exports.getPatternsOutsideCurrentDirectory = exports.getPatternsInsideCurrentDirectory = exports.getPositivePatterns = exports.getNegativePatterns = exports.isPositivePattern = exports.isNegativePattern = exports.convertToNegativePattern = exports.convertToPositivePattern = exports.isDynamicPattern = exports.isStaticPattern = void 0;
 const path = __nccwpck_require__(6928);
 const globParent = __nccwpck_require__(4051);
-const micromatch = __nccwpck_require__(5456);
+const micromatch = __nccwpck_require__(7843);
 const GLOBSTAR = '**';
 const ESCAPE_SYMBOL = '\\';
 const COMMON_GLOB_SYMBOLS_RE = /[*?]|^!/;
@@ -4916,6 +5026,11 @@ const REGEX_CHARACTER_CLASS_SYMBOLS_RE = /\[[^[]*]/;
 const REGEX_GROUP_SYMBOLS_RE = /(?:^|[^!*+?@])\([^(]*\|[^|]*\)/;
 const GLOB_EXTENSION_SYMBOLS_RE = /[!*+?@]\([^(]*\)/;
 const BRACE_EXPANSION_SEPARATORS_RE = /,|\.\./;
+/**
+ * Matches a sequence of two or more consecutive slashes, excluding the first two slashes at the beginning of the string.
+ * The latter is due to the presence of the device path at the beginning of the UNC path.
+ */
+const DOUBLE_SLASH_RE = /(?!^)\/{2,}/g;
 function isStaticPattern(pattern, options = {}) {
     return !isDynamicPattern(pattern, options);
 }
@@ -5034,10 +5149,16 @@ function expandPatternsWithBraceExpansion(patterns) {
 }
 exports.expandPatternsWithBraceExpansion = expandPatternsWithBraceExpansion;
 function expandBraceExpansion(pattern) {
-    return micromatch.braces(pattern, {
-        expand: true,
-        nodupes: true
-    });
+    const patterns = micromatch.braces(pattern, { expand: true, nodupes: true, keepEscaping: true });
+    /**
+     * Sort the patterns by length so that the same depth patterns are processed side by side.
+     * `a/{b,}/{c,}/*` – `['a///*', 'a/b//*', 'a//c/*', 'a/b/c/*']`
+     */
+    patterns.sort((a, b) => a.length - b.length);
+    /**
+     * Micromatch can return an empty string in the case of patterns like `{a,}`.
+     */
+    return patterns.filter((pattern) => pattern !== '');
 }
 exports.expandBraceExpansion = expandBraceExpansion;
 function getPatternParts(pattern, options) {
@@ -5072,11 +5193,37 @@ function matchAny(entry, patternsRe) {
     return patternsRe.some((patternRe) => patternRe.test(entry));
 }
 exports.matchAny = matchAny;
+/**
+ * This package only works with forward slashes as a path separator.
+ * Because of this, we cannot use the standard `path.normalize` method, because on Windows platform it will use of backslashes.
+ */
+function removeDuplicateSlashes(pattern) {
+    return pattern.replace(DOUBLE_SLASH_RE, '/');
+}
+exports.removeDuplicateSlashes = removeDuplicateSlashes;
+function partitionAbsoluteAndRelative(patterns) {
+    const absolute = [];
+    const relative = [];
+    for (const pattern of patterns) {
+        if (isAbsolute(pattern)) {
+            absolute.push(pattern);
+        }
+        else {
+            relative.push(pattern);
+        }
+    }
+    return [absolute, relative];
+}
+exports.partitionAbsoluteAndRelative = partitionAbsoluteAndRelative;
+function isAbsolute(pattern) {
+    return path.isAbsolute(pattern);
+}
+exports.isAbsolute = isAbsolute;
 
 
 /***/ }),
 
-/***/ 836:
+/***/ 2559:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
@@ -5100,7 +5247,7 @@ function propagateCloseEventToSources(streams) {
 
 /***/ }),
 
-/***/ 5525:
+/***/ 3266:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -5414,7 +5561,7 @@ module.exports.promise = queueAsPromised
 
 /***/ }),
 
-/***/ 1569:
+/***/ 706:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 /*!
@@ -5479,7 +5626,7 @@ const toMaxLen = (input, maxLength) => {
   return negative ? ('-' + input) : input;
 };
 
-const toSequence = (parts, options) => {
+const toSequence = (parts, options, maxLen) => {
   parts.negatives.sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
   parts.positives.sort((a, b) => a < b ? -1 : a > b ? 1 : 0);
 
@@ -5489,11 +5636,11 @@ const toSequence = (parts, options) => {
   let result;
 
   if (parts.positives.length) {
-    positives = parts.positives.join('|');
+    positives = parts.positives.map(v => toMaxLen(String(v), maxLen)).join('|');
   }
 
   if (parts.negatives.length) {
-    negatives = `-(${prefix}${parts.negatives.join('|')})`;
+    negatives = `-(${prefix}${parts.negatives.map(v => toMaxLen(String(v), maxLen)).join('|')})`;
   }
 
   if (positives && negatives) {
@@ -5591,7 +5738,7 @@ const fillNumbers = (start, end, step = 1, options = {}) => {
 
   if (options.toRegex === true) {
     return step > 1
-      ? toSequence(parts, options)
+      ? toSequence(parts, options, maxLen)
       : toRegex(range, null, { wrap: false, ...options });
   }
 
@@ -5602,7 +5749,6 @@ const fillLetters = (start, end, step = 1, options = {}) => {
   if ((!isNumber(start) && start.length > 1) || (!isNumber(end) && end.length > 1)) {
     return invalidRange(start, end, options);
   }
-
 
   let format = options.transform || (val => String.fromCharCode(val));
   let a = `${start}`.charCodeAt(0);
@@ -20939,16 +21085,21 @@ function pauseStreams (streams, options) {
 
 /***/ }),
 
-/***/ 5456:
+/***/ 7843:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
 
 const util = __nccwpck_require__(9023);
-const braces = __nccwpck_require__(316);
-const picomatch = __nccwpck_require__(440);
-const utils = __nccwpck_require__(2070);
-const isEmptyString = val => val === '' || val === './';
+const braces = __nccwpck_require__(8751);
+const picomatch = __nccwpck_require__(1604);
+const utils = __nccwpck_require__(8345);
+
+const isEmptyString = v => v === '' || v === './';
+const hasBraces = v => {
+  const index = v.indexOf('{');
+  return index > -1 && v.indexOf('}', index) > -1;
+};
 
 /**
  * Returns an array of strings that match one or more glob patterns.
@@ -21389,7 +21540,7 @@ micromatch.parse = (patterns, options) => {
 
 micromatch.braces = (pattern, options) => {
   if (typeof pattern !== 'string') throw new TypeError('Expected a string');
-  if ((options && options.nobrace === true) || !/\{.*\}/.test(pattern)) {
+  if ((options && options.nobrace === true) || !hasBraces(pattern)) {
     return [pattern];
   }
   return braces(pattern, options);
@@ -21408,22 +21559,24 @@ micromatch.braceExpand = (pattern, options) => {
  * Expose micromatch
  */
 
+// exposed for tests
+micromatch.hasBraces = hasBraces;
 module.exports = micromatch;
 
 
 /***/ }),
 
-/***/ 440:
+/***/ 1604:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
 
-module.exports = __nccwpck_require__(7769);
+module.exports = __nccwpck_require__(8350);
 
 
 /***/ }),
 
-/***/ 4078:
+/***/ 8885:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
@@ -21431,6 +21584,8 @@ module.exports = __nccwpck_require__(7769);
 const path = __nccwpck_require__(6928);
 const WIN_SLASH = '\\\\/';
 const WIN_NO_SLASH = `[^${WIN_SLASH}]`;
+
+const DEFAULT_MAX_EXTGLOB_RECURSION = 0;
 
 /**
  * Posix glob regex
@@ -21495,6 +21650,7 @@ const WINDOWS_CHARS = {
  */
 
 const POSIX_REGEX_SOURCE = {
+  __proto__: null,
   alnum: 'a-zA-Z0-9',
   alpha: 'a-zA-Z',
   ascii: '\\x00-\\x7F',
@@ -21512,6 +21668,7 @@ const POSIX_REGEX_SOURCE = {
 };
 
 module.exports = {
+  DEFAULT_MAX_EXTGLOB_RECURSION,
   MAX_LENGTH: 1024 * 64,
   POSIX_REGEX_SOURCE,
 
@@ -21525,6 +21682,7 @@ module.exports = {
 
   // Replace globs with equivalent patterns to reduce parsing time.
   REPLACEMENTS: {
+    __proto__: null,
     '***': '*',
     '**/**': '**',
     '**/**/**': '**'
@@ -21609,13 +21767,13 @@ module.exports = {
 
 /***/ }),
 
-/***/ 8756:
+/***/ 3779:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
 
-const constants = __nccwpck_require__(4078);
-const utils = __nccwpck_require__(2070);
+const constants = __nccwpck_require__(8885);
+const utils = __nccwpck_require__(8345);
 
 /**
  * Constants
@@ -21657,6 +21815,277 @@ const expandRange = (args, options) => {
 
 const syntaxError = (type, char) => {
   return `Missing ${type}: "${char}" - use "\\\\${char}" to match literal characters`;
+};
+
+const splitTopLevel = input => {
+  const parts = [];
+  let bracket = 0;
+  let paren = 0;
+  let quote = 0;
+  let value = '';
+  let escaped = false;
+
+  for (const ch of input) {
+    if (escaped === true) {
+      value += ch;
+      escaped = false;
+      continue;
+    }
+
+    if (ch === '\\') {
+      value += ch;
+      escaped = true;
+      continue;
+    }
+
+    if (ch === '"') {
+      quote = quote === 1 ? 0 : 1;
+      value += ch;
+      continue;
+    }
+
+    if (quote === 0) {
+      if (ch === '[') {
+        bracket++;
+      } else if (ch === ']' && bracket > 0) {
+        bracket--;
+      } else if (bracket === 0) {
+        if (ch === '(') {
+          paren++;
+        } else if (ch === ')' && paren > 0) {
+          paren--;
+        } else if (ch === '|' && paren === 0) {
+          parts.push(value);
+          value = '';
+          continue;
+        }
+      }
+    }
+
+    value += ch;
+  }
+
+  parts.push(value);
+  return parts;
+};
+
+const isPlainBranch = branch => {
+  let escaped = false;
+
+  for (const ch of branch) {
+    if (escaped === true) {
+      escaped = false;
+      continue;
+    }
+
+    if (ch === '\\') {
+      escaped = true;
+      continue;
+    }
+
+    if (/[?*+@!()[\]{}]/.test(ch)) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+const normalizeSimpleBranch = branch => {
+  let value = branch.trim();
+  let changed = true;
+
+  while (changed === true) {
+    changed = false;
+
+    if (/^@\([^\\()[\]{}|]+\)$/.test(value)) {
+      value = value.slice(2, -1);
+      changed = true;
+    }
+  }
+
+  if (!isPlainBranch(value)) {
+    return;
+  }
+
+  return value.replace(/\\(.)/g, '$1');
+};
+
+const hasRepeatedCharPrefixOverlap = branches => {
+  const values = branches.map(normalizeSimpleBranch).filter(Boolean);
+
+  for (let i = 0; i < values.length; i++) {
+    for (let j = i + 1; j < values.length; j++) {
+      const a = values[i];
+      const b = values[j];
+      const char = a[0];
+
+      if (!char || a !== char.repeat(a.length) || b !== char.repeat(b.length)) {
+        continue;
+      }
+
+      if (a === b || a.startsWith(b) || b.startsWith(a)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
+const parseRepeatedExtglob = (pattern, requireEnd = true) => {
+  if ((pattern[0] !== '+' && pattern[0] !== '*') || pattern[1] !== '(') {
+    return;
+  }
+
+  let bracket = 0;
+  let paren = 0;
+  let quote = 0;
+  let escaped = false;
+
+  for (let i = 1; i < pattern.length; i++) {
+    const ch = pattern[i];
+
+    if (escaped === true) {
+      escaped = false;
+      continue;
+    }
+
+    if (ch === '\\') {
+      escaped = true;
+      continue;
+    }
+
+    if (ch === '"') {
+      quote = quote === 1 ? 0 : 1;
+      continue;
+    }
+
+    if (quote === 1) {
+      continue;
+    }
+
+    if (ch === '[') {
+      bracket++;
+      continue;
+    }
+
+    if (ch === ']' && bracket > 0) {
+      bracket--;
+      continue;
+    }
+
+    if (bracket > 0) {
+      continue;
+    }
+
+    if (ch === '(') {
+      paren++;
+      continue;
+    }
+
+    if (ch === ')') {
+      paren--;
+
+      if (paren === 0) {
+        if (requireEnd === true && i !== pattern.length - 1) {
+          return;
+        }
+
+        return {
+          type: pattern[0],
+          body: pattern.slice(2, i),
+          end: i
+        };
+      }
+    }
+  }
+};
+
+const getStarExtglobSequenceOutput = pattern => {
+  let index = 0;
+  const chars = [];
+
+  while (index < pattern.length) {
+    const match = parseRepeatedExtglob(pattern.slice(index), false);
+
+    if (!match || match.type !== '*') {
+      return;
+    }
+
+    const branches = splitTopLevel(match.body).map(branch => branch.trim());
+    if (branches.length !== 1) {
+      return;
+    }
+
+    const branch = normalizeSimpleBranch(branches[0]);
+    if (!branch || branch.length !== 1) {
+      return;
+    }
+
+    chars.push(branch);
+    index += match.end + 1;
+  }
+
+  if (chars.length < 1) {
+    return;
+  }
+
+  const source = chars.length === 1
+    ? utils.escapeRegex(chars[0])
+    : `[${chars.map(ch => utils.escapeRegex(ch)).join('')}]`;
+
+  return `${source}*`;
+};
+
+const repeatedExtglobRecursion = pattern => {
+  let depth = 0;
+  let value = pattern.trim();
+  let match = parseRepeatedExtglob(value);
+
+  while (match) {
+    depth++;
+    value = match.body.trim();
+    match = parseRepeatedExtglob(value);
+  }
+
+  return depth;
+};
+
+const analyzeRepeatedExtglob = (body, options) => {
+  if (options.maxExtglobRecursion === false) {
+    return { risky: false };
+  }
+
+  const max =
+    typeof options.maxExtglobRecursion === 'number'
+      ? options.maxExtglobRecursion
+      : constants.DEFAULT_MAX_EXTGLOB_RECURSION;
+
+  const branches = splitTopLevel(body).map(branch => branch.trim());
+
+  if (branches.length > 1) {
+    if (
+      branches.some(branch => branch === '') ||
+      branches.some(branch => /^[*?]+$/.test(branch)) ||
+      hasRepeatedCharPrefixOverlap(branches)
+    ) {
+      return { risky: true };
+    }
+  }
+
+  for (const branch of branches) {
+    const safeOutput = getStarExtglobSequenceOutput(branch);
+    if (safeOutput) {
+      return { risky: true, safeOutput };
+    }
+
+    if (repeatedExtglobRecursion(branch) > max) {
+      return { risky: true };
+    }
+  }
+
+  return { risky: false };
 };
 
 /**
@@ -21840,6 +22269,8 @@ const parse = (input, options) => {
     token.prev = prev;
     token.parens = state.parens;
     token.output = state.output;
+    token.startIndex = state.index;
+    token.tokensIndex = tokens.length;
     const output = (opts.capture ? '(' : '') + token.open;
 
     increment('parens');
@@ -21849,6 +22280,34 @@ const parse = (input, options) => {
   };
 
   const extglobClose = token => {
+    const literal = input.slice(token.startIndex, state.index + 1);
+    const body = input.slice(token.startIndex + 2, state.index);
+    const analysis = analyzeRepeatedExtglob(body, opts);
+
+    if ((token.type === 'plus' || token.type === 'star') && analysis.risky) {
+      const safeOutput = analysis.safeOutput
+        ? (token.output ? '' : ONE_CHAR) + (opts.capture ? `(${analysis.safeOutput})` : analysis.safeOutput)
+        : undefined;
+      const open = tokens[token.tokensIndex];
+
+      open.type = 'text';
+      open.value = literal;
+      open.output = safeOutput || utils.escapeRegex(literal);
+
+      for (let i = token.tokensIndex + 1; i < tokens.length; i++) {
+        tokens[i].value = '';
+        tokens[i].output = '';
+        delete tokens[i].suffix;
+      }
+
+      state.output = token.output + open.output;
+      state.backtrack = true;
+
+      push({ type: 'paren', extglob: true, value, output: '' });
+      decrement('parens');
+      return;
+    }
+
     let output = token.close + (opts.capture ? ')' : '');
     let rest;
 
@@ -22707,16 +23166,16 @@ module.exports = parse;
 
 /***/ }),
 
-/***/ 7769:
+/***/ 8350:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
 
 const path = __nccwpck_require__(6928);
-const scan = __nccwpck_require__(7266);
-const parse = __nccwpck_require__(8756);
-const utils = __nccwpck_require__(2070);
-const constants = __nccwpck_require__(4078);
+const scan = __nccwpck_require__(6207);
+const parse = __nccwpck_require__(3779);
+const utils = __nccwpck_require__(8345);
+const constants = __nccwpck_require__(8885);
 const isObject = val => val && typeof val === 'object' && !Array.isArray(val);
 
 /**
@@ -23056,12 +23515,12 @@ module.exports = picomatch;
 
 /***/ }),
 
-/***/ 7266:
+/***/ 6207:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 
 
-const utils = __nccwpck_require__(2070);
+const utils = __nccwpck_require__(8345);
 const {
   CHAR_ASTERISK,             /* * */
   CHAR_AT,                   /* @ */
@@ -23078,7 +23537,7 @@ const {
   CHAR_RIGHT_CURLY_BRACE,    /* } */
   CHAR_RIGHT_PARENTHESES,    /* ) */
   CHAR_RIGHT_SQUARE_BRACKET  /* ] */
-} = __nccwpck_require__(4078);
+} = __nccwpck_require__(8885);
 
 const isPathSeparator = code => {
   return code === CHAR_FORWARD_SLASH || code === CHAR_BACKWARD_SLASH;
@@ -23454,7 +23913,7 @@ module.exports = scan;
 
 /***/ }),
 
-/***/ 2070:
+/***/ 8345:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
@@ -23466,7 +23925,7 @@ const {
   REGEX_REMOVE_BACKSLASH,
   REGEX_SPECIAL_CHARS,
   REGEX_SPECIAL_CHARS_GLOBAL
-} = __nccwpck_require__(4078);
+} = __nccwpck_require__(8885);
 
 exports.isObject = val => val !== null && typeof val === 'object' && !Array.isArray(val);
 exports.hasRegexChars = str => REGEX_SPECIAL_CHARS.test(str);
@@ -51948,8 +52407,8 @@ var promises_ = __nccwpck_require__(1455);
 var external_node_path_ = __nccwpck_require__(6760);
 // EXTERNAL MODULE: ./node_modules/.pnpm/fp-ts@2.13.1/node_modules/fp-ts/lib/TaskEither.js
 var TaskEither = __nccwpck_require__(4660);
-// EXTERNAL MODULE: ./node_modules/.pnpm/yaml@2.2.1/node_modules/yaml/dist/index.js
-var dist = __nccwpck_require__(3466);
+// EXTERNAL MODULE: ./node_modules/.pnpm/yaml@2.9.0/node_modules/yaml/dist/index.js
+var dist = __nccwpck_require__(7140);
 ;// CONCATENATED MODULE: ./node_modules/.pnpm/zod@4.1.12/node_modules/zod/v4/core/core.js
 /** A special constant with type `never` */
 const NEVER = Object.freeze({
@@ -70681,9 +71140,9 @@ __nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __we
 /* harmony import */ var node_path__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(6760);
 /* harmony import */ var node_path__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__nccwpck_require__.n(node_path__WEBPACK_IMPORTED_MODULE_1__);
 /* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(6352);
-/* harmony import */ var ejs__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(9568);
+/* harmony import */ var ejs__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(8192);
 /* harmony import */ var ejs__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__nccwpck_require__.n(ejs__WEBPACK_IMPORTED_MODULE_3__);
-/* harmony import */ var fast_glob__WEBPACK_IMPORTED_MODULE_4__ = __nccwpck_require__(6708);
+/* harmony import */ var fast_glob__WEBPACK_IMPORTED_MODULE_4__ = __nccwpck_require__(5161);
 /* harmony import */ var fast_glob__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__nccwpck_require__.n(fast_glob__WEBPACK_IMPORTED_MODULE_4__);
 /* harmony import */ var fp_ts_Array__WEBPACK_IMPORTED_MODULE_14__ = __nccwpck_require__(823);
 /* harmony import */ var fp_ts_Array__WEBPACK_IMPORTED_MODULE_14___default = /*#__PURE__*/__nccwpck_require__.n(fp_ts_Array__WEBPACK_IMPORTED_MODULE_14__);
@@ -70692,7 +71151,7 @@ __nccwpck_require__.a(module, async (__webpack_handle_async_dependencies__, __we
 /* harmony import */ var fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_13__ = __nccwpck_require__(4660);
 /* harmony import */ var fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_13___default = /*#__PURE__*/__nccwpck_require__.n(fp_ts_TaskEither__WEBPACK_IMPORTED_MODULE_13__);
 /* harmony import */ var fp_ts_function__WEBPACK_IMPORTED_MODULE_12__ = __nccwpck_require__(2323);
-/* harmony import */ var micromatch__WEBPACK_IMPORTED_MODULE_5__ = __nccwpck_require__(5456);
+/* harmony import */ var micromatch__WEBPACK_IMPORTED_MODULE_5__ = __nccwpck_require__(7843);
 /* harmony import */ var micromatch__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__nccwpck_require__.n(micromatch__WEBPACK_IMPORTED_MODULE_5__);
 /* harmony import */ var _config_js__WEBPACK_IMPORTED_MODULE_6__ = __nccwpck_require__(1968);
 /* harmony import */ var _constants_js__WEBPACK_IMPORTED_MODULE_7__ = __nccwpck_require__(1787);
@@ -71742,6 +72201,13 @@ module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("assert");
 
 /***/ }),
 
+/***/ 181:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("buffer");
+
+/***/ }),
+
 /***/ 4434:
 /***/ ((module) => {
 
@@ -71945,6 +72411,13 @@ module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("path");
 
 /***/ }),
 
+/***/ 932:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("process");
+
+/***/ }),
+
 /***/ 2203:
 /***/ ((module) => {
 
@@ -71973,60 +72446,89 @@ module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("util");
 
 /***/ }),
 
-/***/ 5894:
+/***/ 8416:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Node = __nccwpck_require__(1222);
-var Scalar = __nccwpck_require__(9902);
-var resolveBlockMap = __nccwpck_require__(358);
-var resolveBlockSeq = __nccwpck_require__(6565);
-var resolveFlowCollection = __nccwpck_require__(9199);
+var identity = __nccwpck_require__(2222);
+var Scalar = __nccwpck_require__(7404);
+var YAMLMap = __nccwpck_require__(1877);
+var YAMLSeq = __nccwpck_require__(2400);
+var resolveBlockMap = __nccwpck_require__(7616);
+var resolveBlockSeq = __nccwpck_require__(8773);
+var resolveFlowCollection = __nccwpck_require__(6865);
 
-function composeCollection(CN, ctx, token, tagToken, onError) {
-    let coll;
-    switch (token.type) {
-        case 'block-map': {
-            coll = resolveBlockMap.resolveBlockMap(CN, ctx, token, onError);
-            break;
-        }
-        case 'block-seq': {
-            coll = resolveBlockSeq.resolveBlockSeq(CN, ctx, token, onError);
-            break;
-        }
-        case 'flow-collection': {
-            coll = resolveFlowCollection.resolveFlowCollection(CN, ctx, token, onError);
-            break;
-        }
-    }
-    if (!tagToken)
-        return coll;
-    const tagName = ctx.directives.tagName(tagToken.source, msg => onError(tagToken, 'TAG_RESOLVE_FAILED', msg));
-    if (!tagName)
-        return coll;
-    // Cast needed due to: https://github.com/Microsoft/TypeScript/issues/3841
+function resolveCollection(CN, ctx, token, onError, tagName, tag) {
+    const coll = token.type === 'block-map'
+        ? resolveBlockMap.resolveBlockMap(CN, ctx, token, onError, tag)
+        : token.type === 'block-seq'
+            ? resolveBlockSeq.resolveBlockSeq(CN, ctx, token, onError, tag)
+            : resolveFlowCollection.resolveFlowCollection(CN, ctx, token, onError, tag);
     const Coll = coll.constructor;
+    // If we got a tagName matching the class, or the tag name is '!',
+    // then use the tagName from the node class used to create it.
     if (tagName === '!' || tagName === Coll.tagName) {
         coll.tag = Coll.tagName;
         return coll;
     }
-    const expType = Node.isMap(coll) ? 'map' : 'seq';
-    let tag = ctx.schema.tags.find(t => t.collection === expType && t.tag === tagName);
+    if (tagName)
+        coll.tag = tagName;
+    return coll;
+}
+function composeCollection(CN, ctx, token, props, onError) {
+    const tagToken = props.tag;
+    const tagName = !tagToken
+        ? null
+        : ctx.directives.tagName(tagToken.source, msg => onError(tagToken, 'TAG_RESOLVE_FAILED', msg));
+    if (token.type === 'block-seq') {
+        const { anchor, newlineAfterProp: nl } = props;
+        const lastProp = anchor && tagToken
+            ? anchor.offset > tagToken.offset
+                ? anchor
+                : tagToken
+            : (anchor ?? tagToken);
+        if (lastProp && (!nl || nl.offset < lastProp.offset)) {
+            const message = 'Missing newline after block sequence props';
+            onError(lastProp, 'MISSING_CHAR', message);
+        }
+    }
+    const expType = token.type === 'block-map'
+        ? 'map'
+        : token.type === 'block-seq'
+            ? 'seq'
+            : token.start.source === '{'
+                ? 'map'
+                : 'seq';
+    // shortcut: check if it's a generic YAMLMap or YAMLSeq
+    // before jumping into the custom tag logic.
+    if (!tagToken ||
+        !tagName ||
+        tagName === '!' ||
+        (tagName === YAMLMap.YAMLMap.tagName && expType === 'map') ||
+        (tagName === YAMLSeq.YAMLSeq.tagName && expType === 'seq')) {
+        return resolveCollection(CN, ctx, token, onError, tagName);
+    }
+    let tag = ctx.schema.tags.find(t => t.tag === tagName && t.collection === expType);
     if (!tag) {
         const kt = ctx.schema.knownTags[tagName];
-        if (kt && kt.collection === expType) {
+        if (kt?.collection === expType) {
             ctx.schema.tags.push(Object.assign({}, kt, { default: false }));
             tag = kt;
         }
         else {
-            onError(tagToken, 'TAG_RESOLVE_FAILED', `Unresolved tag: ${tagName}`, true);
-            coll.tag = tagName;
-            return coll;
+            if (kt) {
+                onError(tagToken, 'BAD_COLLECTION_TYPE', `${kt.tag} used for ${expType} collection, but expects ${kt.collection ?? 'scalar'}`, true);
+            }
+            else {
+                onError(tagToken, 'TAG_RESOLVE_FAILED', `Unresolved tag: ${tagName}`, true);
+            }
+            return resolveCollection(CN, ctx, token, onError, tagName);
         }
     }
-    const res = tag.resolve(coll, msg => onError(tagToken, 'TAG_RESOLVE_FAILED', msg), ctx.options);
-    const node = Node.isNode(res)
+    const coll = resolveCollection(CN, ctx, token, onError, tagName, tag);
+    const res = tag.resolve?.(coll, msg => onError(tagToken, 'TAG_RESOLVE_FAILED', msg), ctx.options) ?? coll;
+    const node = identity.isNode(res)
         ? res
         : new Scalar.Scalar(res);
     node.range = coll.range;
@@ -72041,20 +72543,21 @@ exports.composeCollection = composeCollection;
 
 /***/ }),
 
-/***/ 4866:
+/***/ 628:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Document = __nccwpck_require__(18);
-var composeNode = __nccwpck_require__(3546);
-var resolveEnd = __nccwpck_require__(7489);
-var resolveProps = __nccwpck_require__(8334);
+var Document = __nccwpck_require__(8396);
+var composeNode = __nccwpck_require__(5264);
+var resolveEnd = __nccwpck_require__(1791);
+var resolveProps = __nccwpck_require__(2516);
 
 function composeDoc(options, directives, { offset, start, value, end }, onError) {
     const opts = Object.assign({ _directives: directives }, options);
     const doc = new Document.Document(undefined, opts);
     const ctx = {
+        atKey: false,
         atRoot: true,
         directives: doc.directives,
         options: doc.options,
@@ -72065,6 +72568,7 @@ function composeDoc(options, directives, { offset, start, value, end }, onError)
         next: value ?? end?.[0],
         offset,
         onError,
+        parentIndent: 0,
         startOnNewline: true
     });
     if (props.found) {
@@ -72074,6 +72578,7 @@ function composeDoc(options, directives, { offset, start, value, end }, onError)
             !props.hasNewline)
             onError(props.end, 'MISSING_CHAR', 'Block collection cannot start on same line with directives-end marker');
     }
+    // @ts-expect-error If Contents is set, let's trust the user
     doc.contents = value
         ? composeNode.composeNode(ctx, value, props, onError)
         : composeNode.composeEmptyNode(ctx, props.end, start, null, props, onError);
@@ -72090,19 +72595,21 @@ exports.composeDoc = composeDoc;
 
 /***/ }),
 
-/***/ 3546:
+/***/ 5264:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Alias = __nccwpck_require__(716);
-var composeCollection = __nccwpck_require__(5894);
-var composeScalar = __nccwpck_require__(9754);
-var resolveEnd = __nccwpck_require__(7489);
-var utilEmptyScalarPosition = __nccwpck_require__(804);
+var Alias = __nccwpck_require__(8006);
+var identity = __nccwpck_require__(2222);
+var composeCollection = __nccwpck_require__(8416);
+var composeScalar = __nccwpck_require__(9292);
+var resolveEnd = __nccwpck_require__(1791);
+var utilEmptyScalarPosition = __nccwpck_require__(5217);
 
 const CN = { composeNode, composeEmptyNode };
 function composeNode(ctx, token, props, onError) {
+    const atKey = ctx.atKey;
     const { spaceBefore, comment, anchor, tag } = props;
     let node;
     let isSrcToken = true;
@@ -72123,21 +72630,36 @@ function composeNode(ctx, token, props, onError) {
         case 'block-map':
         case 'block-seq':
         case 'flow-collection':
-            node = composeCollection.composeCollection(CN, ctx, token, tag, onError);
-            if (anchor)
-                node.anchor = anchor.source.substring(1);
+            try {
+                node = composeCollection.composeCollection(CN, ctx, token, props, onError);
+                if (anchor)
+                    node.anchor = anchor.source.substring(1);
+            }
+            catch (error) {
+                // Almost certainly here due to a stack overflow
+                const message = error instanceof Error ? error.message : String(error);
+                onError(token, 'RESOURCE_EXHAUSTION', message);
+            }
             break;
         default: {
             const message = token.type === 'error'
                 ? token.message
                 : `Unsupported token (type: ${token.type})`;
             onError(token, 'UNEXPECTED_TOKEN', message);
-            node = composeEmptyNode(ctx, token.offset, undefined, null, props, onError);
             isSrcToken = false;
         }
     }
+    node ?? (node = composeEmptyNode(ctx, token.offset, undefined, null, props, onError));
     if (anchor && node.anchor === '')
         onError(anchor, 'BAD_ALIAS', 'Anchor cannot be an empty string');
+    if (atKey &&
+        ctx.options.stringKeys &&
+        (!identity.isScalar(node) ||
+            typeof node.value !== 'string' ||
+            (node.tag && node.tag !== 'tag:yaml.org,2002:str'))) {
+        const msg = 'With stringKeys, all keys must be strings';
+        onError(tag ?? token, 'NON_STRING_KEY', msg);
+    }
     if (spaceBefore)
         node.spaceBefore = true;
     if (comment) {
@@ -72192,32 +72714,37 @@ exports.composeNode = composeNode;
 
 /***/ }),
 
-/***/ 9754:
+/***/ 9292:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Node = __nccwpck_require__(1222);
-var Scalar = __nccwpck_require__(9902);
-var resolveBlockScalar = __nccwpck_require__(8250);
-var resolveFlowScalar = __nccwpck_require__(863);
+var identity = __nccwpck_require__(2222);
+var Scalar = __nccwpck_require__(7404);
+var resolveBlockScalar = __nccwpck_require__(140);
+var resolveFlowScalar = __nccwpck_require__(2481);
 
 function composeScalar(ctx, token, tagToken, onError) {
     const { value, type, comment, range } = token.type === 'block-scalar'
-        ? resolveBlockScalar.resolveBlockScalar(token, ctx.options.strict, onError)
+        ? resolveBlockScalar.resolveBlockScalar(ctx, token, onError)
         : resolveFlowScalar.resolveFlowScalar(token, ctx.options.strict, onError);
     const tagName = tagToken
         ? ctx.directives.tagName(tagToken.source, msg => onError(tagToken, 'TAG_RESOLVE_FAILED', msg))
         : null;
-    const tag = tagToken && tagName
-        ? findScalarTagByName(ctx.schema, value, tagName, tagToken, onError)
-        : token.type === 'scalar'
-            ? findScalarTagByTest(ctx, value, token, onError)
-            : ctx.schema[Node.SCALAR];
+    let tag;
+    if (ctx.options.stringKeys && ctx.atKey) {
+        tag = ctx.schema[identity.SCALAR];
+    }
+    else if (tagName)
+        tag = findScalarTagByName(ctx.schema, value, tagName, tagToken, onError);
+    else if (token.type === 'scalar')
+        tag = findScalarTagByTest(ctx, value, token, onError);
+    else
+        tag = ctx.schema[identity.SCALAR];
     let scalar;
     try {
         const res = tag.resolve(value, msg => onError(tagToken ?? token, 'TAG_RESOLVE_FAILED', msg), ctx.options);
-        scalar = Node.isScalar(res) ? res : new Scalar.Scalar(res);
+        scalar = identity.isScalar(res) ? res : new Scalar.Scalar(res);
     }
     catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
@@ -72238,7 +72765,7 @@ function composeScalar(ctx, token, tagToken, onError) {
 }
 function findScalarTagByName(schema, value, tagName, tagToken, onError) {
     if (tagName === '!')
-        return schema[Node.SCALAR]; // non-specific tag
+        return schema[identity.SCALAR]; // non-specific tag
     const matchWithTest = [];
     for (const tag of schema.tags) {
         if (!tag.collection && tag.tag === tagName) {
@@ -72259,13 +72786,14 @@ function findScalarTagByName(schema, value, tagName, tagToken, onError) {
         return kt;
     }
     onError(tagToken, 'TAG_RESOLVE_FAILED', `Unresolved tag: ${tagName}`, tagName !== 'tag:yaml.org,2002:str');
-    return schema[Node.SCALAR];
+    return schema[identity.SCALAR];
 }
-function findScalarTagByTest({ directives, schema }, value, token, onError) {
-    const tag = schema.tags.find(tag => tag.default && tag.test?.test(value)) || schema[Node.SCALAR];
+function findScalarTagByTest({ atKey, directives, schema }, value, token, onError) {
+    const tag = schema.tags.find(tag => (tag.default === true || (atKey && tag.default === 'key')) &&
+        tag.test?.test(value)) || schema[identity.SCALAR];
     if (schema.compat) {
         const compat = schema.compat.find(tag => tag.default && tag.test?.test(value)) ??
-            schema[Node.SCALAR];
+            schema[identity.SCALAR];
         if (tag.tag !== compat.tag) {
             const ts = directives.tagString(tag.tag);
             const cs = directives.tagString(compat.tag);
@@ -72281,17 +72809,18 @@ exports.composeScalar = composeScalar;
 
 /***/ }),
 
-/***/ 5987:
+/***/ 2493:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var directives = __nccwpck_require__(9725);
-var Document = __nccwpck_require__(18);
-var errors = __nccwpck_require__(4335);
-var Node = __nccwpck_require__(1222);
-var composeDoc = __nccwpck_require__(4866);
-var resolveEnd = __nccwpck_require__(7489);
+var node_process = __nccwpck_require__(932);
+var directives = __nccwpck_require__(9411);
+var Document = __nccwpck_require__(8396);
+var errors = __nccwpck_require__(8229);
+var identity = __nccwpck_require__(2222);
+var composeDoc = __nccwpck_require__(628);
+var resolveEnd = __nccwpck_require__(1791);
 
 function getErrorPos(src) {
     if (typeof src === 'number')
@@ -72369,9 +72898,9 @@ class Composer {
             else if (afterEmptyLine || doc.directives.docStart || !dc) {
                 doc.commentBefore = comment;
             }
-            else if (Node.isCollection(dc) && !dc.flow && dc.items.length > 0) {
+            else if (identity.isCollection(dc) && !dc.flow && dc.items.length > 0) {
                 let it = dc.items[0];
-                if (Node.isPair(it))
+                if (identity.isPair(it))
                     it = it.key;
                 const cb = it.commentBefore;
                 it.commentBefore = cb ? `${comment}\n${cb}` : comment;
@@ -72382,8 +72911,10 @@ class Composer {
             }
         }
         if (afterDoc) {
-            Array.prototype.push.apply(doc.errors, this.errors);
-            Array.prototype.push.apply(doc.warnings, this.warnings);
+            for (let i = 0; i < this.errors.length; ++i)
+                doc.errors.push(this.errors[i]);
+            for (let i = 0; i < this.warnings.length; ++i)
+                doc.warnings.push(this.warnings[i]);
         }
         else {
             doc.errors = this.errors;
@@ -72419,7 +72950,7 @@ class Composer {
     }
     /** Advance the composer by one CST token. */
     *next(token) {
-        if (process.env.LOG_STREAM)
+        if (node_process.env.LOG_STREAM)
             console.dir(token, { depth: null });
         switch (token.type) {
             case 'directive':
@@ -72509,21 +73040,22 @@ exports.Composer = Composer;
 
 /***/ }),
 
-/***/ 358:
+/***/ 7616:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Pair = __nccwpck_require__(1618);
-var YAMLMap = __nccwpck_require__(799);
-var resolveProps = __nccwpck_require__(8334);
-var utilContainsNewline = __nccwpck_require__(9734);
-var utilFlowIndentCheck = __nccwpck_require__(9032);
-var utilMapIncludes = __nccwpck_require__(434);
+var Pair = __nccwpck_require__(9184);
+var YAMLMap = __nccwpck_require__(1877);
+var resolveProps = __nccwpck_require__(2516);
+var utilContainsNewline = __nccwpck_require__(7200);
+var utilFlowIndentCheck = __nccwpck_require__(6926);
+var utilMapIncludes = __nccwpck_require__(4320);
 
 const startColMsg = 'All mapping items must start at the same column';
-function resolveBlockMap({ composeNode, composeEmptyNode }, ctx, bm, onError) {
-    const map = new YAMLMap.YAMLMap(ctx.schema);
+function resolveBlockMap({ composeNode, composeEmptyNode }, ctx, bm, onError, tag) {
+    const NodeClass = tag?.nodeClass ?? YAMLMap.YAMLMap;
+    const map = new NodeClass(ctx.schema);
     if (ctx.atRoot)
         ctx.atRoot = false;
     let offset = bm.offset;
@@ -72536,6 +73068,7 @@ function resolveBlockMap({ composeNode, composeEmptyNode }, ctx, bm, onError) {
             next: key ?? sep?.[0],
             offset,
             onError,
+            parentIndent: bm.indent,
             startOnNewline: true
         });
         const implicitKey = !keyProps.found;
@@ -72556,7 +73089,7 @@ function resolveBlockMap({ composeNode, composeEmptyNode }, ctx, bm, onError) {
                 }
                 continue;
             }
-            if (keyProps.hasNewlineAfterProp || utilContainsNewline.containsNewline(key)) {
+            if (keyProps.newlineAfterProp || utilContainsNewline.containsNewline(key)) {
                 onError(key ?? start[start.length - 1], 'MULTILINE_IMPLICIT_KEY', 'Implicit keys need to be on a single line');
             }
         }
@@ -72564,12 +73097,14 @@ function resolveBlockMap({ composeNode, composeEmptyNode }, ctx, bm, onError) {
             onError(offset, 'BAD_INDENT', startColMsg);
         }
         // key value
+        ctx.atKey = true;
         const keyStart = keyProps.end;
         const keyNode = key
             ? composeNode(ctx, key, keyProps, onError)
             : composeEmptyNode(ctx, keyStart, start, null, keyProps, onError);
         if (ctx.schema.compat)
             utilFlowIndentCheck.flowIndentCheck(bm.indent, key, onError);
+        ctx.atKey = false;
         if (utilMapIncludes.mapIncludes(ctx, map.items, keyNode))
             onError(keyStart, 'DUPLICATE_KEY', 'Map keys must be unique');
         // value properties
@@ -72578,6 +73113,7 @@ function resolveBlockMap({ composeNode, composeEmptyNode }, ctx, bm, onError) {
             next: value,
             offset: keyNode.range[2],
             onError,
+            parentIndent: bm.indent,
             startOnNewline: !key || key.type === 'block-scalar'
         });
         offset = valueProps.end;
@@ -72628,16 +73164,16 @@ exports.resolveBlockMap = resolveBlockMap;
 
 /***/ }),
 
-/***/ 8250:
+/***/ 140:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Scalar = __nccwpck_require__(9902);
+var Scalar = __nccwpck_require__(7404);
 
-function resolveBlockScalar(scalar, strict, onError) {
+function resolveBlockScalar(ctx, scalar, onError) {
     const start = scalar.offset;
-    const header = parseBlockScalarHeader(scalar, strict, onError);
+    const header = parseBlockScalarHeader(scalar, ctx.options.strict, onError);
     if (!header)
         return { value: '', type: null, comment: '', range: [start, start, start] };
     const type = header.mode === '>' ? Scalar.Scalar.BLOCK_FOLDED : Scalar.Scalar.BLOCK_LITERAL;
@@ -72679,6 +73215,10 @@ function resolveBlockScalar(scalar, strict, onError) {
             if (header.indent === 0)
                 trimIndent = indent.length;
             contentStart = i;
+            if (trimIndent === 0 && !ctx.atRoot) {
+                const message = 'Block scalar values in collections must be indented';
+                onError(offset, 'BAD_INDENT', message);
+            }
             break;
         }
         offset += indent.length + content.length + 1;
@@ -72831,19 +73371,22 @@ exports.resolveBlockScalar = resolveBlockScalar;
 
 /***/ }),
 
-/***/ 6565:
+/***/ 8773:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var YAMLSeq = __nccwpck_require__(8862);
-var resolveProps = __nccwpck_require__(8334);
-var utilFlowIndentCheck = __nccwpck_require__(9032);
+var YAMLSeq = __nccwpck_require__(2400);
+var resolveProps = __nccwpck_require__(2516);
+var utilFlowIndentCheck = __nccwpck_require__(6926);
 
-function resolveBlockSeq({ composeNode, composeEmptyNode }, ctx, bs, onError) {
-    const seq = new YAMLSeq.YAMLSeq(ctx.schema);
+function resolveBlockSeq({ composeNode, composeEmptyNode }, ctx, bs, onError, tag) {
+    const NodeClass = tag?.nodeClass ?? YAMLSeq.YAMLSeq;
+    const seq = new NodeClass(ctx.schema);
     if (ctx.atRoot)
         ctx.atRoot = false;
+    if (ctx.atKey)
+        ctx.atKey = false;
     let offset = bs.offset;
     let commentEnd = null;
     for (const { start, value } of bs.items) {
@@ -72852,11 +73395,12 @@ function resolveBlockSeq({ composeNode, composeEmptyNode }, ctx, bs, onError) {
             next: value,
             offset,
             onError,
+            parentIndent: bs.indent,
             startOnNewline: true
         });
         if (!props.found) {
             if (props.anchor || props.tag || value) {
-                if (value && value.type === 'block-seq')
+                if (value?.type === 'block-seq')
                     onError(props.end, 'BAD_INDENT', 'All sequence items must start at the same column');
                 else
                     onError(offset, 'MISSING_CHAR', 'Sequence item without - indicator');
@@ -72885,7 +73429,7 @@ exports.resolveBlockSeq = resolveBlockSeq;
 
 /***/ }),
 
-/***/ 7489:
+/***/ 1791:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -72931,32 +73475,33 @@ exports.resolveEnd = resolveEnd;
 
 /***/ }),
 
-/***/ 9199:
+/***/ 6865:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Node = __nccwpck_require__(1222);
-var Pair = __nccwpck_require__(1618);
-var YAMLMap = __nccwpck_require__(799);
-var YAMLSeq = __nccwpck_require__(8862);
-var resolveEnd = __nccwpck_require__(7489);
-var resolveProps = __nccwpck_require__(8334);
-var utilContainsNewline = __nccwpck_require__(9734);
-var utilMapIncludes = __nccwpck_require__(434);
+var identity = __nccwpck_require__(2222);
+var Pair = __nccwpck_require__(9184);
+var YAMLMap = __nccwpck_require__(1877);
+var YAMLSeq = __nccwpck_require__(2400);
+var resolveEnd = __nccwpck_require__(1791);
+var resolveProps = __nccwpck_require__(2516);
+var utilContainsNewline = __nccwpck_require__(7200);
+var utilMapIncludes = __nccwpck_require__(4320);
 
 const blockMsg = 'Block collections are not allowed within flow collections';
 const isBlock = (token) => token && (token.type === 'block-map' || token.type === 'block-seq');
-function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onError) {
+function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onError, tag) {
     const isMap = fc.start.source === '{';
     const fcName = isMap ? 'flow map' : 'flow sequence';
-    const coll = isMap
-        ? new YAMLMap.YAMLMap(ctx.schema)
-        : new YAMLSeq.YAMLSeq(ctx.schema);
+    const NodeClass = (tag?.nodeClass ?? (isMap ? YAMLMap.YAMLMap : YAMLSeq.YAMLSeq));
+    const coll = new NodeClass(ctx.schema);
     coll.flow = true;
     const atRoot = ctx.atRoot;
     if (atRoot)
         ctx.atRoot = false;
+    if (ctx.atKey)
+        ctx.atKey = false;
     let offset = fc.offset + fc.start.source.length;
     for (let i = 0; i < fc.items.length; ++i) {
         const collItem = fc.items[i];
@@ -72967,6 +73512,7 @@ function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onErr
             next: key ?? sep?.[0],
             offset,
             onError,
+            parentIndent: fc.indent,
             startOnNewline: false
         });
         if (!props.found) {
@@ -73011,7 +73557,7 @@ function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onErr
                 }
                 if (prevItemComment) {
                     let prev = coll.items[coll.items.length - 1];
-                    if (Node.isPair(prev))
+                    if (identity.isPair(prev))
                         prev = prev.value ?? prev.key;
                     if (prev.comment)
                         prev.comment += '\n' + prevItemComment;
@@ -73035,12 +73581,14 @@ function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onErr
         else {
             // item is a key+value pair
             // key value
+            ctx.atKey = true;
             const keyStart = props.end;
             const keyNode = key
                 ? composeNode(ctx, key, props, onError)
                 : composeEmptyNode(ctx, keyStart, start, null, props, onError);
             if (isBlock(key))
                 onError(keyNode.range, 'BLOCK_IN_FLOW', blockMsg);
+            ctx.atKey = false;
             // value properties
             const valueProps = resolveProps.resolveProps(sep ?? [], {
                 flow: fcName,
@@ -73048,6 +73596,7 @@ function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onErr
                 next: value,
                 offset: keyNode.range[2],
                 onError,
+                parentIndent: fc.indent,
                 startOnNewline: false
             });
             if (valueProps.found) {
@@ -73066,7 +73615,7 @@ function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onErr
                 }
             }
             else if (value) {
-                if ('source' in value && value.source && value.source[0] === ':')
+                if ('source' in value && value.source?.[0] === ':')
                     onError(value, 'MISSING_CHAR', `Missing space after : in ${fcName}`);
                 else
                     onError(valueProps.start, 'MISSING_CHAR', `Missing , or : between ${fcName} items`);
@@ -73100,6 +73649,8 @@ function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onErr
                 const map = new YAMLMap.YAMLMap(ctx.schema);
                 map.flow = true;
                 map.items.push(pair);
+                const endRange = (valueNode ?? keyNode).range;
+                map.range = [keyNode.range[0], endRange[1], endRange[2]];
                 coll.items.push(map);
             }
             offset = valueNode ? valueNode.range[2] : valueProps.end;
@@ -73108,7 +73659,7 @@ function resolveFlowCollection({ composeNode, composeEmptyNode }, ctx, fc, onErr
     const expectedEnd = isMap ? '}' : ']';
     const [ce, ...ee] = fc.end;
     let cePos = offset;
-    if (ce && ce.source === expectedEnd)
+    if (ce?.source === expectedEnd)
         cePos = ce.offset + ce.source.length;
     else {
         const name = fcName[0].toUpperCase() + fcName.substring(1);
@@ -73140,13 +73691,13 @@ exports.resolveFlowCollection = resolveFlowCollection;
 
 /***/ }),
 
-/***/ 863:
+/***/ 2481:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Scalar = __nccwpck_require__(9902);
-var resolveEnd = __nccwpck_require__(7489);
+var Scalar = __nccwpck_require__(7404);
+var resolveEnd = __nccwpck_require__(1791);
 
 function resolveFlowScalar(scalar, strict, onError) {
     const { offset, type, source, end } = scalar;
@@ -73231,7 +73782,7 @@ function foldLines(source) {
         first = new RegExp('(.*?)(?<![ \t])[ \t]*\r?\n', 'sy');
         line = new RegExp('[ \t]*(.*?)(?:(?<![ \t])[ \t]*)?\r?\n', 'sy');
     }
-    catch (_) {
+    catch {
         first = /(.*?)[ \t]*\r?\n/sy;
         line = /[ \t]*(.*?)[ \t]*\r?\n/sy;
     }
@@ -73289,7 +73840,7 @@ function doubleQuotedValue(source, onError) {
                     next = source[++i + 1];
             }
             else if (next === 'x' || next === 'u' || next === 'U') {
-                const length = { x: 2, u: 4, U: 8 }[next];
+                const length = next === 'x' ? 2 : next === 'u' ? 4 : 8;
                 res += parseCharCode(source, i + 1, length, onError);
                 i += length;
             }
@@ -73336,19 +73887,19 @@ function foldNewline(source, offset) {
     return { fold, offset };
 }
 const escapeCodes = {
-    '0': '\0',
-    a: '\x07',
-    b: '\b',
-    e: '\x1b',
-    f: '\f',
-    n: '\n',
-    r: '\r',
-    t: '\t',
-    v: '\v',
-    N: '\u0085',
-    _: '\u00a0',
-    L: '\u2028',
-    P: '\u2029',
+    '0': '\0', // null character
+    a: '\x07', // bell character
+    b: '\b', // backspace
+    e: '\x1b', // escape character
+    f: '\f', // form feed
+    n: '\n', // line feed
+    r: '\r', // carriage return
+    t: '\t', // horizontal tab
+    v: '\v', // vertical tab
+    N: '\u0085', // Unicode next line
+    _: '\u00a0', // Unicode non-breaking space
+    L: '\u2028', // Unicode line separator
+    P: '\u2029', // Unicode paragraph separator
     ' ': ' ',
     '"': '"',
     '/': '/',
@@ -73359,12 +73910,14 @@ function parseCharCode(source, offset, length, onError) {
     const cc = source.substr(offset, length);
     const ok = cc.length === length && /^[0-9a-fA-F]+$/.test(cc);
     const code = ok ? parseInt(cc, 16) : NaN;
-    if (isNaN(code)) {
+    try {
+        return String.fromCodePoint(code);
+    }
+    catch {
         const raw = source.substr(offset - 2, length + 2);
         onError(offset - 2, 'BAD_DQ_ESCAPE', `Invalid escape sequence ${raw}`);
         return raw;
     }
-    return String.fromCodePoint(code);
 }
 
 exports.resolveFlowScalar = resolveFlowScalar;
@@ -73372,22 +73925,23 @@ exports.resolveFlowScalar = resolveFlowScalar;
 
 /***/ }),
 
-/***/ 8334:
+/***/ 2516:
 /***/ ((__unused_webpack_module, exports) => {
 
 
 
-function resolveProps(tokens, { flow, indicator, next, offset, onError, startOnNewline }) {
+function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIndent, startOnNewline }) {
     let spaceBefore = false;
     let atNewline = startOnNewline;
     let hasSpace = startOnNewline;
     let comment = '';
     let commentSep = '';
     let hasNewline = false;
-    let hasNewlineAfterProp = false;
     let reqSpace = false;
+    let tab = null;
     let anchor = null;
     let tag = null;
+    let newlineAfterProp = null;
     let comma = null;
     let found = null;
     let start = null;
@@ -73399,16 +73953,22 @@ function resolveProps(tokens, { flow, indicator, next, offset, onError, startOnN
                 onError(token.offset, 'MISSING_CHAR', 'Tags and anchors must be separated from the next token by white space');
             reqSpace = false;
         }
+        if (tab) {
+            if (atNewline && token.type !== 'comment' && token.type !== 'newline') {
+                onError(tab, 'TAB_AS_INDENT', 'Tabs are not allowed as indentation');
+            }
+            tab = null;
+        }
         switch (token.type) {
             case 'space':
                 // At the doc level, tabs at line start may be parsed
                 // as leading white space rather than indentation.
                 // In a flow collection, only the parser handles indent.
                 if (!flow &&
-                    atNewline &&
-                    indicator !== 'doc-start' &&
-                    token.source[0] === '\t')
-                    onError(token, 'TAB_AS_INDENT', 'Tabs are not allowed as indentation');
+                    (indicator !== 'doc-start' || next?.type !== 'flow-collection') &&
+                    token.source.includes('\t')) {
+                    tab = token;
+                }
                 hasSpace = true;
                 break;
             case 'comment': {
@@ -73427,7 +73987,7 @@ function resolveProps(tokens, { flow, indicator, next, offset, onError, startOnN
                 if (atNewline) {
                     if (comment)
                         comment += token.source;
-                    else
+                    else if (!found || indicator !== 'seq-item-ind')
                         spaceBefore = true;
                 }
                 else
@@ -73435,7 +73995,7 @@ function resolveProps(tokens, { flow, indicator, next, offset, onError, startOnN
                 atNewline = true;
                 hasNewline = true;
                 if (anchor || tag)
-                    hasNewlineAfterProp = true;
+                    newlineAfterProp = token;
                 hasSpace = true;
                 break;
             case 'anchor':
@@ -73444,8 +74004,7 @@ function resolveProps(tokens, { flow, indicator, next, offset, onError, startOnN
                 if (token.source.endsWith(':'))
                     onError(token.offset + token.source.length - 1, 'BAD_ALIAS', 'Anchor ending in : is ambiguous', true);
                 anchor = token;
-                if (start === null)
-                    start = token.offset;
+                start ?? (start = token.offset);
                 atNewline = false;
                 hasSpace = false;
                 reqSpace = true;
@@ -73454,8 +74013,7 @@ function resolveProps(tokens, { flow, indicator, next, offset, onError, startOnN
                 if (tag)
                     onError(token, 'MULTIPLE_TAGS', 'A node can have at most one tag');
                 tag = token;
-                if (start === null)
-                    start = token.offset;
+                start ?? (start = token.offset);
                 atNewline = false;
                 hasSpace = false;
                 reqSpace = true;
@@ -73468,7 +74026,8 @@ function resolveProps(tokens, { flow, indicator, next, offset, onError, startOnN
                 if (found)
                     onError(token, 'UNEXPECTED_TOKEN', `Unexpected ${token.source} in ${flow ?? 'collection'}`);
                 found = token;
-                atNewline = false;
+                atNewline =
+                    indicator === 'seq-item-ind' || indicator === 'explicit-key-ind';
                 hasSpace = false;
                 break;
             case 'comma':
@@ -73494,17 +74053,23 @@ function resolveProps(tokens, { flow, indicator, next, offset, onError, startOnN
         next.type !== 'space' &&
         next.type !== 'newline' &&
         next.type !== 'comma' &&
-        (next.type !== 'scalar' || next.source !== ''))
+        (next.type !== 'scalar' || next.source !== '')) {
         onError(next.offset, 'MISSING_CHAR', 'Tags and anchors must be separated from the next token by white space');
+    }
+    if (tab &&
+        ((atNewline && tab.indent <= parentIndent) ||
+            next?.type === 'block-map' ||
+            next?.type === 'block-seq'))
+        onError(tab, 'TAB_AS_INDENT', 'Tabs are not allowed as indentation');
     return {
         comma,
         found,
         spaceBefore,
         comment,
         hasNewline,
-        hasNewlineAfterProp,
         anchor,
         tag,
+        newlineAfterProp,
         end,
         start: start ?? end
     };
@@ -73515,7 +74080,7 @@ exports.resolveProps = resolveProps;
 
 /***/ }),
 
-/***/ 9734:
+/***/ 7200:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -73558,15 +74123,14 @@ exports.containsNewline = containsNewline;
 
 /***/ }),
 
-/***/ 804:
+/***/ 5217:
 /***/ ((__unused_webpack_module, exports) => {
 
 
 
 function emptyScalarPosition(offset, before, pos) {
     if (before) {
-        if (pos === null)
-            pos = before.length;
+        pos ?? (pos = before.length);
         for (let i = pos - 1; i >= 0; --i) {
             let st = before[i];
             switch (st.type) {
@@ -73594,12 +74158,12 @@ exports.emptyScalarPosition = emptyScalarPosition;
 
 /***/ }),
 
-/***/ 9032:
+/***/ 6926:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var utilContainsNewline = __nccwpck_require__(9734);
+var utilContainsNewline = __nccwpck_require__(7200);
 
 function flowIndentCheck(indent, fc, onError) {
     if (fc?.type === 'flow-collection') {
@@ -73618,12 +74182,12 @@ exports.flowIndentCheck = flowIndentCheck;
 
 /***/ }),
 
-/***/ 434:
+/***/ 4320:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Node = __nccwpck_require__(1222);
+var identity = __nccwpck_require__(2222);
 
 function mapIncludes(ctx, items, search) {
     const { uniqueKeys } = ctx.options;
@@ -73631,11 +74195,7 @@ function mapIncludes(ctx, items, search) {
         return false;
     const isEqual = typeof uniqueKeys === 'function'
         ? uniqueKeys
-        : (a, b) => a === b ||
-            (Node.isScalar(a) &&
-                Node.isScalar(b) &&
-                a.value === b.value &&
-                !(a.value === '<<' && ctx.schema.merge));
+        : (a, b) => a === b || (identity.isScalar(a) && identity.isScalar(b) && a.value === b.value);
     return items.some(pair => isEqual(pair.key, search));
 }
 
@@ -73644,23 +74204,22 @@ exports.mapIncludes = mapIncludes;
 
 /***/ }),
 
-/***/ 18:
+/***/ 8396:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Alias = __nccwpck_require__(716);
-var Collection = __nccwpck_require__(58);
-var Node = __nccwpck_require__(1222);
-var Pair = __nccwpck_require__(1618);
-var toJS = __nccwpck_require__(4776);
-var Schema = __nccwpck_require__(7693);
-var stringify = __nccwpck_require__(9757);
-var stringifyDocument = __nccwpck_require__(2188);
-var anchors = __nccwpck_require__(9457);
-var applyReviver = __nccwpck_require__(1190);
-var createNode = __nccwpck_require__(687);
-var directives = __nccwpck_require__(9725);
+var Alias = __nccwpck_require__(8006);
+var Collection = __nccwpck_require__(7536);
+var identity = __nccwpck_require__(2222);
+var Pair = __nccwpck_require__(9184);
+var toJS = __nccwpck_require__(4886);
+var Schema = __nccwpck_require__(6519);
+var stringifyDocument = __nccwpck_require__(2458);
+var anchors = __nccwpck_require__(1695);
+var applyReviver = __nccwpck_require__(2060);
+var createNode = __nccwpck_require__(6229);
+var directives = __nccwpck_require__(9411);
 
 class Document {
     constructor(value, replacer, options) {
@@ -73672,7 +74231,7 @@ class Document {
         this.errors = [];
         /** Warnings encountered during parsing. */
         this.warnings = [];
-        Object.defineProperty(this, Node.NODE_TYPE, { value: Node.DOC });
+        Object.defineProperty(this, identity.NODE_TYPE, { value: identity.DOC });
         let _replacer = null;
         if (typeof replacer === 'function' || Array.isArray(replacer)) {
             _replacer = replacer;
@@ -73687,6 +74246,7 @@ class Document {
             logLevel: 'warn',
             prettyErrors: true,
             strict: true,
+            stringKeys: false,
             uniqueKeys: true,
             version: '1.2'
         }, options);
@@ -73700,11 +74260,9 @@ class Document {
         else
             this.directives = new directives.Directives({ version });
         this.setSchema(version, options);
-        if (value === undefined)
-            this.contents = null;
-        else {
-            this.contents = this.createNode(value, _replacer, options);
-        }
+        // @ts-expect-error We can't really know that this matches Contents.
+        this.contents =
+            value === undefined ? null : this.createNode(value, _replacer, options);
     }
     /**
      * Create a deep copy of this Document and its contents.
@@ -73713,7 +74271,7 @@ class Document {
      */
     clone() {
         const copy = Object.create(Document.prototype, {
-            [Node.NODE_TYPE]: { value: Node.DOC }
+            [identity.NODE_TYPE]: { value: identity.DOC }
         });
         copy.commentBefore = this.commentBefore;
         copy.comment = this.comment;
@@ -73723,7 +74281,8 @@ class Document {
         if (this.directives)
             copy.directives = this.directives.clone();
         copy.schema = this.schema.clone();
-        copy.contents = Node.isNode(this.contents)
+        // @ts-expect-error We can't really know that this matches Contents.
+        copy.contents = identity.isNode(this.contents)
             ? this.contents.clone(copy.schema)
             : this.contents;
         if (this.range)
@@ -73789,7 +74348,7 @@ class Document {
             sourceObjects
         };
         const node = createNode.createNode(value, tag, ctx);
-        if (flow && Node.isCollection(node))
+        if (flow && identity.isCollection(node))
             node.flow = true;
         setAnchors();
         return node;
@@ -73818,6 +74377,7 @@ class Document {
         if (Collection.isEmptyPath(path)) {
             if (this.contents == null)
                 return false;
+            // @ts-expect-error Presumed impossible if Strict extends false
             this.contents = null;
             return true;
         }
@@ -73831,7 +74391,7 @@ class Document {
      * `true` (collections are always returned intact).
      */
     get(key, keepScalar) {
-        return Node.isCollection(this.contents)
+        return identity.isCollection(this.contents)
             ? this.contents.get(key, keepScalar)
             : undefined;
     }
@@ -73842,10 +74402,10 @@ class Document {
      */
     getIn(path, keepScalar) {
         if (Collection.isEmptyPath(path))
-            return !keepScalar && Node.isScalar(this.contents)
+            return !keepScalar && identity.isScalar(this.contents)
                 ? this.contents.value
                 : this.contents;
-        return Node.isCollection(this.contents)
+        return identity.isCollection(this.contents)
             ? this.contents.getIn(path, keepScalar)
             : undefined;
     }
@@ -73853,7 +74413,7 @@ class Document {
      * Checks if the document includes a value with the key `key`.
      */
     has(key) {
-        return Node.isCollection(this.contents) ? this.contents.has(key) : false;
+        return identity.isCollection(this.contents) ? this.contents.has(key) : false;
     }
     /**
      * Checks if the document includes a value at `path`.
@@ -73861,7 +74421,7 @@ class Document {
     hasIn(path) {
         if (Collection.isEmptyPath(path))
             return this.contents !== undefined;
-        return Node.isCollection(this.contents) ? this.contents.hasIn(path) : false;
+        return identity.isCollection(this.contents) ? this.contents.hasIn(path) : false;
     }
     /**
      * Sets a value in this document. For `!!set`, `value` needs to be a
@@ -73869,6 +74429,7 @@ class Document {
      */
     set(key, value) {
         if (this.contents == null) {
+            // @ts-expect-error We can't really know that this matches Contents.
             this.contents = Collection.collectionFromPath(this.schema, [key], value);
         }
         else if (assertCollection(this.contents)) {
@@ -73880,9 +74441,12 @@ class Document {
      * boolean to add/remove the item from the set.
      */
     setIn(path, value) {
-        if (Collection.isEmptyPath(path))
+        if (Collection.isEmptyPath(path)) {
+            // @ts-expect-error We can't really know that this matches Contents.
             this.contents = value;
+        }
         else if (this.contents == null) {
+            // @ts-expect-error We can't really know that this matches Contents.
             this.contents = Collection.collectionFromPath(this.schema, Array.from(path), value);
         }
         else if (assertCollection(this.contents)) {
@@ -73906,7 +74470,7 @@ class Document {
                     this.directives.yaml.version = '1.1';
                 else
                     this.directives = new directives.Directives({ version: '1.1' });
-                opt = { merge: true, resolveKnownTags: false, schema: 'yaml-1.1' };
+                opt = { resolveKnownTags: false, schema: 'yaml-1.1' };
                 break;
             case '1.2':
             case 'next':
@@ -73914,7 +74478,7 @@ class Document {
                     this.directives.yaml.version = version;
                 else
                     this.directives = new directives.Directives({ version });
-                opt = { merge: false, resolveKnownTags: true, schema: 'core' };
+                opt = { resolveKnownTags: true, schema: 'core' };
                 break;
             case null:
                 if (this.directives)
@@ -73942,8 +74506,7 @@ class Document {
             keep: !json,
             mapAsMap: mapAsMap === true,
             mapKeyWarned: false,
-            maxAliasCount: typeof maxAliasCount === 'number' ? maxAliasCount : 100,
-            stringify: stringify.stringify
+            maxAliasCount: typeof maxAliasCount === 'number' ? maxAliasCount : 100
         };
         const res = toJS.toJS(this.contents, jsonArg ?? '', ctx);
         if (typeof onAnchor === 'function')
@@ -73975,7 +74538,7 @@ class Document {
     }
 }
 function assertCollection(contents) {
-    if (Node.isCollection(contents))
+    if (identity.isCollection(contents))
         return true;
     throw new Error('Expected a YAML collection as document contents');
 }
@@ -73985,13 +74548,13 @@ exports.Document = Document;
 
 /***/ }),
 
-/***/ 9457:
+/***/ 1695:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Node = __nccwpck_require__(1222);
-var visit = __nccwpck_require__(5785);
+var identity = __nccwpck_require__(2222);
+var visit = __nccwpck_require__(3975);
 
 /**
  * Verify that the input string is a valid anchor.
@@ -74031,8 +74594,7 @@ function createNodeAnchors(doc, prefix) {
     return {
         onAnchor: (source) => {
             aliasObjects.push(source);
-            if (!prevAnchors)
-                prevAnchors = anchorNames(doc);
+            prevAnchors ?? (prevAnchors = anchorNames(doc));
             const anchor = findNewAnchor(prefix, prevAnchors);
             prevAnchors.add(anchor);
             return anchor;
@@ -74047,7 +74609,7 @@ function createNodeAnchors(doc, prefix) {
                 const ref = sourceObjects.get(source);
                 if (typeof ref === 'object' &&
                     ref.anchor &&
-                    (Node.isScalar(ref.node) || Node.isCollection(ref.node))) {
+                    (identity.isScalar(ref.node) || identity.isCollection(ref.node))) {
                     ref.node.anchor = ref.anchor;
                 }
                 else {
@@ -74069,7 +74631,7 @@ exports.findNewAnchor = findNewAnchor;
 
 /***/ }),
 
-/***/ 1190:
+/***/ 2060:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -74087,6 +74649,7 @@ function applyReviver(reviver, obj, key, val) {
             for (let i = 0, len = val.length; i < len; ++i) {
                 const v0 = val[i];
                 const v1 = applyReviver(reviver, val, String(i), v0);
+                // eslint-disable-next-line @typescript-eslint/no-array-delete
                 if (v1 === undefined)
                     delete val[i];
                 else if (v1 !== v0)
@@ -74132,14 +74695,14 @@ exports.applyReviver = applyReviver;
 
 /***/ }),
 
-/***/ 687:
+/***/ 6229:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Alias = __nccwpck_require__(716);
-var Node = __nccwpck_require__(1222);
-var Scalar = __nccwpck_require__(9902);
+var Alias = __nccwpck_require__(8006);
+var identity = __nccwpck_require__(2222);
+var Scalar = __nccwpck_require__(7404);
 
 const defaultTagPrefix = 'tag:yaml.org,2002:';
 function findTagObject(value, tagName, tags) {
@@ -74153,12 +74716,12 @@ function findTagObject(value, tagName, tags) {
     return tags.find(t => t.identify?.(value) && !t.format);
 }
 function createNode(value, tagName, ctx) {
-    if (Node.isDocument(value))
+    if (identity.isDocument(value))
         value = value.contents;
-    if (Node.isNode(value))
+    if (identity.isNode(value))
         return value;
-    if (Node.isPair(value)) {
-        const map = ctx.schema[Node.MAP].createNode?.(ctx.schema, null, ctx);
+    if (identity.isPair(value)) {
+        const map = ctx.schema[identity.MAP].createNode?.(ctx.schema, null, ctx);
         map.items.push(value);
         return map;
     }
@@ -74177,8 +74740,7 @@ function createNode(value, tagName, ctx) {
     if (aliasDuplicateObjects && value && typeof value === 'object') {
         ref = sourceObjects.get(value);
         if (ref) {
-            if (!ref.anchor)
-                ref.anchor = onAnchor(value);
+            ref.anchor ?? (ref.anchor = onAnchor(value));
             return new Alias.Alias(ref.anchor);
         }
         else {
@@ -74202,10 +74764,10 @@ function createNode(value, tagName, ctx) {
         }
         tagObj =
             value instanceof Map
-                ? schema[Node.MAP]
+                ? schema[identity.MAP]
                 : Symbol.iterator in Object(value)
-                    ? schema[Node.SEQ]
-                    : schema[Node.MAP];
+                    ? schema[identity.SEQ]
+                    : schema[identity.MAP];
     }
     if (onTagObj) {
         onTagObj(tagObj);
@@ -74213,9 +74775,13 @@ function createNode(value, tagName, ctx) {
     }
     const node = tagObj?.createNode
         ? tagObj.createNode(ctx.schema, value, ctx)
-        : new Scalar.Scalar(value);
+        : typeof tagObj?.nodeClass?.from === 'function'
+            ? tagObj.nodeClass.from(ctx.schema, value, ctx)
+            : new Scalar.Scalar(value);
     if (tagName)
         node.tag = tagName;
+    else if (!tagObj.default)
+        node.tag = tagObj.tag;
     if (ref)
         ref.node = node;
     return node;
@@ -74226,13 +74792,13 @@ exports.createNode = createNode;
 
 /***/ }),
 
-/***/ 9725:
+/***/ 9411:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Node = __nccwpck_require__(1222);
-var visit = __nccwpck_require__(5785);
+var identity = __nccwpck_require__(2222);
+var visit = __nccwpck_require__(3975);
 
 const escapeChars = {
     '!': '%21',
@@ -74349,12 +74915,19 @@ class Directives {
                 onError('Verbatim tags must end with a >');
             return verbatim;
         }
-        const [, handle, suffix] = source.match(/^(.*!)([^!]*)$/);
+        const [, handle, suffix] = source.match(/^(.*!)([^!]*)$/s);
         if (!suffix)
             onError(`The ${source} tag has no suffix`);
         const prefix = this.tags[handle];
-        if (prefix)
-            return prefix + decodeURIComponent(suffix);
+        if (prefix) {
+            try {
+                return prefix + decodeURIComponent(suffix);
+            }
+            catch (error) {
+                onError(String(error));
+                return null;
+            }
+        }
         if (handle === '!')
             return source; // local tag
         onError(`Could not resolve tag: ${source}`);
@@ -74377,10 +74950,10 @@ class Directives {
             : [];
         const tagEntries = Object.entries(this.tags);
         let tagNames;
-        if (doc && tagEntries.length > 0 && Node.isNode(doc.contents)) {
+        if (doc && tagEntries.length > 0 && identity.isNode(doc.contents)) {
             const tags = {};
             visit.visit(doc.contents, (_key, node) => {
-                if (Node.isNode(node) && node.tag)
+                if (identity.isNode(node) && node.tag)
                     tags[node.tag] = true;
             });
             tagNames = Object.keys(tags);
@@ -74404,7 +74977,7 @@ exports.Directives = Directives;
 
 /***/ }),
 
-/***/ 4335:
+/***/ 8229:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -74457,8 +75030,8 @@ const prettifyError = (src, lc) => (error) => {
     if (/[^ ]/.test(lineStr)) {
         let count = 1;
         const end = error.linePos[1];
-        if (end && end.line === line && end.col > col) {
-            count = Math.min(end.col - col, 80 - ci);
+        if (end?.line === line && end.col > col) {
+            count = Math.max(1, Math.min(end.col - col, 80 - ci));
         }
         const pointer = ' '.repeat(ci) + '^'.repeat(count);
         error.message += `:\n\n${lineStr}\n${pointer}\n`;
@@ -74473,28 +75046,28 @@ exports.prettifyError = prettifyError;
 
 /***/ }),
 
-/***/ 3466:
+/***/ 7140:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 var __webpack_unused_export__;
 
 
-var composer = __nccwpck_require__(5987);
-var Document = __nccwpck_require__(18);
-var Schema = __nccwpck_require__(7693);
-var errors = __nccwpck_require__(4335);
-var Alias = __nccwpck_require__(716);
-var Node = __nccwpck_require__(1222);
-var Pair = __nccwpck_require__(1618);
-var Scalar = __nccwpck_require__(9902);
-var YAMLMap = __nccwpck_require__(799);
-var YAMLSeq = __nccwpck_require__(8862);
-var cst = __nccwpck_require__(3316);
-var lexer = __nccwpck_require__(9956);
-var lineCounter = __nccwpck_require__(3303);
-var parser = __nccwpck_require__(9803);
-var publicApi = __nccwpck_require__(3480);
-var visit = __nccwpck_require__(5785);
+var composer = __nccwpck_require__(2493);
+var Document = __nccwpck_require__(8396);
+var Schema = __nccwpck_require__(6519);
+var errors = __nccwpck_require__(8229);
+var Alias = __nccwpck_require__(8006);
+var identity = __nccwpck_require__(2222);
+var Pair = __nccwpck_require__(9184);
+var Scalar = __nccwpck_require__(7404);
+var YAMLMap = __nccwpck_require__(1877);
+var YAMLSeq = __nccwpck_require__(2400);
+var cst = __nccwpck_require__(5110);
+var lexer = __nccwpck_require__(2826);
+var lineCounter = __nccwpck_require__(5137);
+var parser = __nccwpck_require__(4693);
+var publicApi = __nccwpck_require__(7330);
+var visit = __nccwpck_require__(3975);
 
 
 
@@ -74505,14 +75078,14 @@ __webpack_unused_export__ = errors.YAMLError;
 __webpack_unused_export__ = errors.YAMLParseError;
 __webpack_unused_export__ = errors.YAMLWarning;
 __webpack_unused_export__ = Alias.Alias;
-__webpack_unused_export__ = Node.isAlias;
-__webpack_unused_export__ = Node.isCollection;
-__webpack_unused_export__ = Node.isDocument;
-__webpack_unused_export__ = Node.isMap;
-__webpack_unused_export__ = Node.isNode;
-__webpack_unused_export__ = Node.isPair;
-__webpack_unused_export__ = Node.isScalar;
-__webpack_unused_export__ = Node.isSeq;
+__webpack_unused_export__ = identity.isAlias;
+__webpack_unused_export__ = identity.isCollection;
+__webpack_unused_export__ = identity.isDocument;
+__webpack_unused_export__ = identity.isMap;
+__webpack_unused_export__ = identity.isNode;
+__webpack_unused_export__ = identity.isPair;
+__webpack_unused_export__ = identity.isScalar;
+__webpack_unused_export__ = identity.isSeq;
 __webpack_unused_export__ = Pair.Pair;
 __webpack_unused_export__ = Scalar.Scalar;
 __webpack_unused_export__ = YAMLMap.YAMLMap;
@@ -74531,10 +75104,12 @@ __webpack_unused_export__ = visit.visitAsync;
 
 /***/ }),
 
-/***/ 224:
-/***/ ((__unused_webpack_module, exports) => {
+/***/ 4350:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
+
+var node_process = __nccwpck_require__(932);
 
 function debug(logLevel, ...messages) {
     if (logLevel === 'debug')
@@ -74542,8 +75117,8 @@ function debug(logLevel, ...messages) {
 }
 function warn(logLevel, warning) {
     if (logLevel === 'debug' || logLevel === 'warn') {
-        if (typeof process !== 'undefined' && process.emitWarning)
-            process.emitWarning(warning);
+        if (typeof node_process.emitWarning === 'function')
+            node_process.emitWarning(warning);
         else
             console.warn(warning);
     }
@@ -74555,18 +75130,20 @@ exports.warn = warn;
 
 /***/ }),
 
-/***/ 716:
+/***/ 8006:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var anchors = __nccwpck_require__(9457);
-var visit = __nccwpck_require__(5785);
-var Node = __nccwpck_require__(1222);
+var anchors = __nccwpck_require__(1695);
+var visit = __nccwpck_require__(3975);
+var identity = __nccwpck_require__(2222);
+var Node = __nccwpck_require__(7136);
+var toJS = __nccwpck_require__(4886);
 
 class Alias extends Node.NodeBase {
     constructor(source) {
-        super(Node.ALIAS);
+        super(identity.ALIAS);
         this.source = source;
         Object.defineProperty(this, 'tag', {
             set() {
@@ -74578,30 +75155,50 @@ class Alias extends Node.NodeBase {
      * Resolve the value of this alias within `doc`, finding the last
      * instance of the `source` anchor before this node.
      */
-    resolve(doc) {
+    resolve(doc, ctx) {
+        if (ctx?.maxAliasCount === 0)
+            throw new ReferenceError('Alias resolution is disabled');
+        let nodes;
+        if (ctx?.aliasResolveCache) {
+            nodes = ctx.aliasResolveCache;
+        }
+        else {
+            nodes = [];
+            visit.visit(doc, {
+                Node: (_key, node) => {
+                    if (identity.isAlias(node) || identity.hasAnchor(node))
+                        nodes.push(node);
+                }
+            });
+            if (ctx)
+                ctx.aliasResolveCache = nodes;
+        }
         let found = undefined;
-        visit.visit(doc, {
-            Node: (_key, node) => {
-                if (node === this)
-                    return visit.visit.BREAK;
-                if (node.anchor === this.source)
-                    found = node;
-            }
-        });
+        for (const node of nodes) {
+            if (node === this)
+                break;
+            if (node.anchor === this.source)
+                found = node;
+        }
         return found;
     }
     toJSON(_arg, ctx) {
         if (!ctx)
             return { source: this.source };
         const { anchors, doc, maxAliasCount } = ctx;
-        const source = this.resolve(doc);
+        const source = this.resolve(doc, ctx);
         if (!source) {
             const msg = `Unresolved alias (the anchor must be set before the alias): ${this.source}`;
             throw new ReferenceError(msg);
         }
-        const data = anchors.get(source);
+        let data = anchors.get(source);
+        if (!data) {
+            // Resolve anchors for Node.prototype.toJS()
+            toJS.toJS(source, null, ctx);
+            data = anchors.get(source);
+        }
         /* istanbul ignore if */
-        if (!data || data.res === undefined) {
+        if (data?.res === undefined) {
             const msg = 'This should not happen: Alias anchor was not resolved?';
             throw new ReferenceError(msg);
         }
@@ -74631,12 +75228,12 @@ class Alias extends Node.NodeBase {
     }
 }
 function getAliasCount(doc, node, anchors) {
-    if (Node.isAlias(node)) {
+    if (identity.isAlias(node)) {
         const source = node.resolve(doc);
         const anchor = anchors && source && anchors.get(source);
         return anchor ? anchor.count * anchor.aliasCount : 0;
     }
-    else if (Node.isCollection(node)) {
+    else if (identity.isCollection(node)) {
         let count = 0;
         for (const item of node.items) {
             const c = getAliasCount(doc, item, anchors);
@@ -74645,7 +75242,7 @@ function getAliasCount(doc, node, anchors) {
         }
         return count;
     }
-    else if (Node.isPair(node)) {
+    else if (identity.isPair(node)) {
         const kc = getAliasCount(doc, node.key, anchors);
         const vc = getAliasCount(doc, node.value, anchors);
         return Math.max(kc, vc);
@@ -74658,13 +75255,14 @@ exports.Alias = Alias;
 
 /***/ }),
 
-/***/ 58:
+/***/ 7536:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var createNode = __nccwpck_require__(687);
-var Node = __nccwpck_require__(1222);
+var createNode = __nccwpck_require__(6229);
+var identity = __nccwpck_require__(2222);
+var Node = __nccwpck_require__(7136);
 
 function collectionFromPath(schema, path, value) {
     let v = value;
@@ -74712,7 +75310,7 @@ class Collection extends Node.NodeBase {
         const copy = Object.create(Object.getPrototypeOf(this), Object.getOwnPropertyDescriptors(this));
         if (schema)
             copy.schema = schema;
-        copy.items = copy.items.map(it => Node.isNode(it) || Node.isPair(it) ? it.clone(schema) : it);
+        copy.items = copy.items.map(it => identity.isNode(it) || identity.isPair(it) ? it.clone(schema) : it);
         if (this.range)
             copy.range = this.range.slice();
         return copy;
@@ -74728,7 +75326,7 @@ class Collection extends Node.NodeBase {
         else {
             const [key, ...rest] = path;
             const node = this.get(key, true);
-            if (Node.isCollection(node))
+            if (identity.isCollection(node))
                 node.addIn(rest, value);
             else if (node === undefined && this.schema)
                 this.set(key, collectionFromPath(this.schema, rest, value));
@@ -74745,7 +75343,7 @@ class Collection extends Node.NodeBase {
         if (rest.length === 0)
             return this.delete(key);
         const node = this.get(key, true);
-        if (Node.isCollection(node))
+        if (identity.isCollection(node))
             return node.deleteIn(rest);
         else
             throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
@@ -74759,18 +75357,18 @@ class Collection extends Node.NodeBase {
         const [key, ...rest] = path;
         const node = this.get(key, true);
         if (rest.length === 0)
-            return !keepScalar && Node.isScalar(node) ? node.value : node;
+            return !keepScalar && identity.isScalar(node) ? node.value : node;
         else
-            return Node.isCollection(node) ? node.getIn(rest, keepScalar) : undefined;
+            return identity.isCollection(node) ? node.getIn(rest, keepScalar) : undefined;
     }
     hasAllNullValues(allowScalar) {
         return this.items.every(node => {
-            if (!Node.isPair(node))
+            if (!identity.isPair(node))
                 return false;
             const n = node.value;
             return (n == null ||
                 (allowScalar &&
-                    Node.isScalar(n) &&
+                    identity.isScalar(n) &&
                     n.value == null &&
                     !n.commentBefore &&
                     !n.comment &&
@@ -74785,7 +75383,7 @@ class Collection extends Node.NodeBase {
         if (rest.length === 0)
             return this.has(key);
         const node = this.get(key, true);
-        return Node.isCollection(node) ? node.hasIn(rest) : false;
+        return identity.isCollection(node) ? node.hasIn(rest) : false;
     }
     /**
      * Sets a value in this collection. For `!!set`, `value` needs to be a
@@ -74798,7 +75396,7 @@ class Collection extends Node.NodeBase {
         }
         else {
             const node = this.get(key, true);
-            if (Node.isCollection(node))
+            if (identity.isCollection(node))
                 node.setIn(rest, value);
             else if (node === undefined && this.schema)
                 this.set(key, collectionFromPath(this.schema, rest, value));
@@ -74807,7 +75405,6 @@ class Collection extends Node.NodeBase {
         }
     }
 }
-Collection.maxFlowStringSingleLineLength = 60;
 
 exports.Collection = Collection;
 exports.collectionFromPath = collectionFromPath;
@@ -74816,7 +75413,482 @@ exports.isEmptyPath = isEmptyPath;
 
 /***/ }),
 
-/***/ 1222:
+/***/ 7136:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+
+var applyReviver = __nccwpck_require__(2060);
+var identity = __nccwpck_require__(2222);
+var toJS = __nccwpck_require__(4886);
+
+class NodeBase {
+    constructor(type) {
+        Object.defineProperty(this, identity.NODE_TYPE, { value: type });
+    }
+    /** Create a copy of this node.  */
+    clone() {
+        const copy = Object.create(Object.getPrototypeOf(this), Object.getOwnPropertyDescriptors(this));
+        if (this.range)
+            copy.range = this.range.slice();
+        return copy;
+    }
+    /** A plain JavaScript representation of this node. */
+    toJS(doc, { mapAsMap, maxAliasCount, onAnchor, reviver } = {}) {
+        if (!identity.isDocument(doc))
+            throw new TypeError('A document argument is required');
+        const ctx = {
+            anchors: new Map(),
+            doc,
+            keep: true,
+            mapAsMap: mapAsMap === true,
+            mapKeyWarned: false,
+            maxAliasCount: typeof maxAliasCount === 'number' ? maxAliasCount : 100
+        };
+        const res = toJS.toJS(this, '', ctx);
+        if (typeof onAnchor === 'function')
+            for (const { count, res } of ctx.anchors.values())
+                onAnchor(res, count);
+        return typeof reviver === 'function'
+            ? applyReviver.applyReviver(reviver, { '': res }, '', res)
+            : res;
+    }
+}
+
+exports.NodeBase = NodeBase;
+
+
+/***/ }),
+
+/***/ 9184:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+
+var createNode = __nccwpck_require__(6229);
+var stringifyPair = __nccwpck_require__(7355);
+var addPairToJSMap = __nccwpck_require__(3505);
+var identity = __nccwpck_require__(2222);
+
+function createPair(key, value, ctx) {
+    const k = createNode.createNode(key, undefined, ctx);
+    const v = createNode.createNode(value, undefined, ctx);
+    return new Pair(k, v);
+}
+class Pair {
+    constructor(key, value = null) {
+        Object.defineProperty(this, identity.NODE_TYPE, { value: identity.PAIR });
+        this.key = key;
+        this.value = value;
+    }
+    clone(schema) {
+        let { key, value } = this;
+        if (identity.isNode(key))
+            key = key.clone(schema);
+        if (identity.isNode(value))
+            value = value.clone(schema);
+        return new Pair(key, value);
+    }
+    toJSON(_, ctx) {
+        const pair = ctx?.mapAsMap ? new Map() : {};
+        return addPairToJSMap.addPairToJSMap(ctx, pair, this);
+    }
+    toString(ctx, onComment, onChompKeep) {
+        return ctx?.doc
+            ? stringifyPair.stringifyPair(this, ctx, onComment, onChompKeep)
+            : JSON.stringify(this);
+    }
+}
+
+exports.Pair = Pair;
+exports.createPair = createPair;
+
+
+/***/ }),
+
+/***/ 7404:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+
+var identity = __nccwpck_require__(2222);
+var Node = __nccwpck_require__(7136);
+var toJS = __nccwpck_require__(4886);
+
+const isScalarValue = (value) => !value || (typeof value !== 'function' && typeof value !== 'object');
+class Scalar extends Node.NodeBase {
+    constructor(value) {
+        super(identity.SCALAR);
+        this.value = value;
+    }
+    toJSON(arg, ctx) {
+        return ctx?.keep ? this.value : toJS.toJS(this.value, arg, ctx);
+    }
+    toString() {
+        return String(this.value);
+    }
+}
+Scalar.BLOCK_FOLDED = 'BLOCK_FOLDED';
+Scalar.BLOCK_LITERAL = 'BLOCK_LITERAL';
+Scalar.PLAIN = 'PLAIN';
+Scalar.QUOTE_DOUBLE = 'QUOTE_DOUBLE';
+Scalar.QUOTE_SINGLE = 'QUOTE_SINGLE';
+
+exports.Scalar = Scalar;
+exports.isScalarValue = isScalarValue;
+
+
+/***/ }),
+
+/***/ 1877:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+
+var stringifyCollection = __nccwpck_require__(3035);
+var addPairToJSMap = __nccwpck_require__(3505);
+var Collection = __nccwpck_require__(7536);
+var identity = __nccwpck_require__(2222);
+var Pair = __nccwpck_require__(9184);
+var Scalar = __nccwpck_require__(7404);
+
+function findPair(items, key) {
+    const k = identity.isScalar(key) ? key.value : key;
+    for (const it of items) {
+        if (identity.isPair(it)) {
+            if (it.key === key || it.key === k)
+                return it;
+            if (identity.isScalar(it.key) && it.key.value === k)
+                return it;
+        }
+    }
+    return undefined;
+}
+class YAMLMap extends Collection.Collection {
+    static get tagName() {
+        return 'tag:yaml.org,2002:map';
+    }
+    constructor(schema) {
+        super(identity.MAP, schema);
+        this.items = [];
+    }
+    /**
+     * A generic collection parsing method that can be extended
+     * to other node classes that inherit from YAMLMap
+     */
+    static from(schema, obj, ctx) {
+        const { keepUndefined, replacer } = ctx;
+        const map = new this(schema);
+        const add = (key, value) => {
+            if (typeof replacer === 'function')
+                value = replacer.call(obj, key, value);
+            else if (Array.isArray(replacer) && !replacer.includes(key))
+                return;
+            if (value !== undefined || keepUndefined)
+                map.items.push(Pair.createPair(key, value, ctx));
+        };
+        if (obj instanceof Map) {
+            for (const [key, value] of obj)
+                add(key, value);
+        }
+        else if (obj && typeof obj === 'object') {
+            for (const key of Object.keys(obj))
+                add(key, obj[key]);
+        }
+        if (typeof schema.sortMapEntries === 'function') {
+            map.items.sort(schema.sortMapEntries);
+        }
+        return map;
+    }
+    /**
+     * Adds a value to the collection.
+     *
+     * @param overwrite - If not set `true`, using a key that is already in the
+     *   collection will throw. Otherwise, overwrites the previous value.
+     */
+    add(pair, overwrite) {
+        let _pair;
+        if (identity.isPair(pair))
+            _pair = pair;
+        else if (!pair || typeof pair !== 'object' || !('key' in pair)) {
+            // In TypeScript, this never happens.
+            _pair = new Pair.Pair(pair, pair?.value);
+        }
+        else
+            _pair = new Pair.Pair(pair.key, pair.value);
+        const prev = findPair(this.items, _pair.key);
+        const sortEntries = this.schema?.sortMapEntries;
+        if (prev) {
+            if (!overwrite)
+                throw new Error(`Key ${_pair.key} already set`);
+            // For scalars, keep the old node & its comments and anchors
+            if (identity.isScalar(prev.value) && Scalar.isScalarValue(_pair.value))
+                prev.value.value = _pair.value;
+            else
+                prev.value = _pair.value;
+        }
+        else if (sortEntries) {
+            const i = this.items.findIndex(item => sortEntries(_pair, item) < 0);
+            if (i === -1)
+                this.items.push(_pair);
+            else
+                this.items.splice(i, 0, _pair);
+        }
+        else {
+            this.items.push(_pair);
+        }
+    }
+    delete(key) {
+        const it = findPair(this.items, key);
+        if (!it)
+            return false;
+        const del = this.items.splice(this.items.indexOf(it), 1);
+        return del.length > 0;
+    }
+    get(key, keepScalar) {
+        const it = findPair(this.items, key);
+        const node = it?.value;
+        return (!keepScalar && identity.isScalar(node) ? node.value : node) ?? undefined;
+    }
+    has(key) {
+        return !!findPair(this.items, key);
+    }
+    set(key, value) {
+        this.add(new Pair.Pair(key, value), true);
+    }
+    /**
+     * @param ctx - Conversion context, originally set in Document#toJS()
+     * @param {Class} Type - If set, forces the returned collection type
+     * @returns Instance of Type, Map, or Object
+     */
+    toJSON(_, ctx, Type) {
+        const map = Type ? new Type() : ctx?.mapAsMap ? new Map() : {};
+        if (ctx?.onCreate)
+            ctx.onCreate(map);
+        for (const item of this.items)
+            addPairToJSMap.addPairToJSMap(ctx, map, item);
+        return map;
+    }
+    toString(ctx, onComment, onChompKeep) {
+        if (!ctx)
+            return JSON.stringify(this);
+        for (const item of this.items) {
+            if (!identity.isPair(item))
+                throw new Error(`Map items must all be pairs; found ${JSON.stringify(item)} instead`);
+        }
+        if (!ctx.allNullValues && this.hasAllNullValues(false))
+            ctx = Object.assign({}, ctx, { allNullValues: true });
+        return stringifyCollection.stringifyCollection(this, ctx, {
+            blockItemPrefix: '',
+            flowChars: { start: '{', end: '}' },
+            itemIndent: ctx.indent || '',
+            onChompKeep,
+            onComment
+        });
+    }
+}
+
+exports.YAMLMap = YAMLMap;
+exports.findPair = findPair;
+
+
+/***/ }),
+
+/***/ 2400:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+
+var createNode = __nccwpck_require__(6229);
+var stringifyCollection = __nccwpck_require__(3035);
+var Collection = __nccwpck_require__(7536);
+var identity = __nccwpck_require__(2222);
+var Scalar = __nccwpck_require__(7404);
+var toJS = __nccwpck_require__(4886);
+
+class YAMLSeq extends Collection.Collection {
+    static get tagName() {
+        return 'tag:yaml.org,2002:seq';
+    }
+    constructor(schema) {
+        super(identity.SEQ, schema);
+        this.items = [];
+    }
+    add(value) {
+        this.items.push(value);
+    }
+    /**
+     * Removes a value from the collection.
+     *
+     * `key` must contain a representation of an integer for this to succeed.
+     * It may be wrapped in a `Scalar`.
+     *
+     * @returns `true` if the item was found and removed.
+     */
+    delete(key) {
+        const idx = asItemIndex(key);
+        if (typeof idx !== 'number')
+            return false;
+        const del = this.items.splice(idx, 1);
+        return del.length > 0;
+    }
+    get(key, keepScalar) {
+        const idx = asItemIndex(key);
+        if (typeof idx !== 'number')
+            return undefined;
+        const it = this.items[idx];
+        return !keepScalar && identity.isScalar(it) ? it.value : it;
+    }
+    /**
+     * Checks if the collection includes a value with the key `key`.
+     *
+     * `key` must contain a representation of an integer for this to succeed.
+     * It may be wrapped in a `Scalar`.
+     */
+    has(key) {
+        const idx = asItemIndex(key);
+        return typeof idx === 'number' && idx < this.items.length;
+    }
+    /**
+     * Sets a value in this collection. For `!!set`, `value` needs to be a
+     * boolean to add/remove the item from the set.
+     *
+     * If `key` does not contain a representation of an integer, this will throw.
+     * It may be wrapped in a `Scalar`.
+     */
+    set(key, value) {
+        const idx = asItemIndex(key);
+        if (typeof idx !== 'number')
+            throw new Error(`Expected a valid index, not ${key}.`);
+        const prev = this.items[idx];
+        if (identity.isScalar(prev) && Scalar.isScalarValue(value))
+            prev.value = value;
+        else
+            this.items[idx] = value;
+    }
+    toJSON(_, ctx) {
+        const seq = [];
+        if (ctx?.onCreate)
+            ctx.onCreate(seq);
+        let i = 0;
+        for (const item of this.items)
+            seq.push(toJS.toJS(item, String(i++), ctx));
+        return seq;
+    }
+    toString(ctx, onComment, onChompKeep) {
+        if (!ctx)
+            return JSON.stringify(this);
+        return stringifyCollection.stringifyCollection(this, ctx, {
+            blockItemPrefix: '- ',
+            flowChars: { start: '[', end: ']' },
+            itemIndent: (ctx.indent || '') + '  ',
+            onChompKeep,
+            onComment
+        });
+    }
+    static from(schema, obj, ctx) {
+        const { replacer } = ctx;
+        const seq = new this(schema);
+        if (obj && Symbol.iterator in Object(obj)) {
+            let i = 0;
+            for (let it of obj) {
+                if (typeof replacer === 'function') {
+                    const key = obj instanceof Set ? it : String(i++);
+                    it = replacer.call(obj, key, it);
+                }
+                seq.items.push(createNode.createNode(it, undefined, ctx));
+            }
+        }
+        return seq;
+    }
+}
+function asItemIndex(key) {
+    let idx = identity.isScalar(key) ? key.value : key;
+    if (idx && typeof idx === 'string')
+        idx = Number(idx);
+    return typeof idx === 'number' && Number.isInteger(idx) && idx >= 0
+        ? idx
+        : null;
+}
+
+exports.YAMLSeq = YAMLSeq;
+
+
+/***/ }),
+
+/***/ 3505:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+
+var log = __nccwpck_require__(4350);
+var merge = __nccwpck_require__(2435);
+var stringify = __nccwpck_require__(7391);
+var identity = __nccwpck_require__(2222);
+var toJS = __nccwpck_require__(4886);
+
+function addPairToJSMap(ctx, map, { key, value }) {
+    if (identity.isNode(key) && key.addToJSMap)
+        key.addToJSMap(ctx, map, value);
+    // TODO: Should drop this special case for bare << handling
+    else if (merge.isMergeKey(ctx, key))
+        merge.addMergeToJSMap(ctx, map, value);
+    else {
+        const jsKey = toJS.toJS(key, '', ctx);
+        if (map instanceof Map) {
+            map.set(jsKey, toJS.toJS(value, jsKey, ctx));
+        }
+        else if (map instanceof Set) {
+            map.add(jsKey);
+        }
+        else {
+            const stringKey = stringifyKey(key, jsKey, ctx);
+            const jsValue = toJS.toJS(value, stringKey, ctx);
+            if (stringKey in map)
+                Object.defineProperty(map, stringKey, {
+                    value: jsValue,
+                    writable: true,
+                    enumerable: true,
+                    configurable: true
+                });
+            else
+                map[stringKey] = jsValue;
+        }
+    }
+    return map;
+}
+function stringifyKey(key, jsKey, ctx) {
+    if (jsKey === null)
+        return '';
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string
+    if (typeof jsKey !== 'object')
+        return String(jsKey);
+    if (identity.isNode(key) && ctx?.doc) {
+        const strCtx = stringify.createStringifyContext(ctx.doc, {});
+        strCtx.anchors = new Set();
+        for (const node of ctx.anchors.keys())
+            strCtx.anchors.add(node.anchor);
+        strCtx.inFlow = true;
+        strCtx.inStringifyKey = true;
+        const strKey = key.toString(strCtx);
+        if (!ctx.mapKeyWarned) {
+            let jsonStr = JSON.stringify(strKey);
+            if (jsonStr.length > 40)
+                jsonStr = jsonStr.substring(0, 36) + '..."';
+            log.warn(ctx.doc.options.logLevel, `Keys with collection values will be stringified due to JS Object restrictions: ${jsonStr}. Set mapAsMap: true to use object keys.`);
+            ctx.mapKeyWarned = true;
+        }
+        return strKey;
+    }
+    return JSON.stringify(jsKey);
+}
+
+exports.addPairToJSMap = addPairToJSMap;
+
+
+/***/ }),
+
+/***/ 2222:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -74855,24 +75927,11 @@ function isNode(node) {
     return false;
 }
 const hasAnchor = (node) => (isScalar(node) || isCollection(node)) && !!node.anchor;
-class NodeBase {
-    constructor(type) {
-        Object.defineProperty(this, NODE_TYPE, { value: type });
-    }
-    /** Create a copy of this node.  */
-    clone() {
-        const copy = Object.create(Object.getPrototypeOf(this), Object.getOwnPropertyDescriptors(this));
-        if (this.range)
-            copy.range = this.range.slice();
-        return copy;
-    }
-}
 
 exports.ALIAS = ALIAS;
 exports.DOC = DOC;
 exports.MAP = MAP;
 exports.NODE_TYPE = NODE_TYPE;
-exports.NodeBase = NodeBase;
 exports.PAIR = PAIR;
 exports.SCALAR = SCALAR;
 exports.SEQ = SEQ;
@@ -74889,436 +75948,12 @@ exports.isSeq = isSeq;
 
 /***/ }),
 
-/***/ 1618:
+/***/ 4886:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var createNode = __nccwpck_require__(687);
-var stringifyPair = __nccwpck_require__(3162);
-var addPairToJSMap = __nccwpck_require__(511);
-var Node = __nccwpck_require__(1222);
-
-function createPair(key, value, ctx) {
-    const k = createNode.createNode(key, undefined, ctx);
-    const v = createNode.createNode(value, undefined, ctx);
-    return new Pair(k, v);
-}
-class Pair {
-    constructor(key, value = null) {
-        Object.defineProperty(this, Node.NODE_TYPE, { value: Node.PAIR });
-        this.key = key;
-        this.value = value;
-    }
-    clone(schema) {
-        let { key, value } = this;
-        if (Node.isNode(key))
-            key = key.clone(schema);
-        if (Node.isNode(value))
-            value = value.clone(schema);
-        return new Pair(key, value);
-    }
-    toJSON(_, ctx) {
-        const pair = ctx?.mapAsMap ? new Map() : {};
-        return addPairToJSMap.addPairToJSMap(ctx, pair, this);
-    }
-    toString(ctx, onComment, onChompKeep) {
-        return ctx?.doc
-            ? stringifyPair.stringifyPair(this, ctx, onComment, onChompKeep)
-            : JSON.stringify(this);
-    }
-}
-
-exports.Pair = Pair;
-exports.createPair = createPair;
-
-
-/***/ }),
-
-/***/ 9902:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-
-var Node = __nccwpck_require__(1222);
-var toJS = __nccwpck_require__(4776);
-
-const isScalarValue = (value) => !value || (typeof value !== 'function' && typeof value !== 'object');
-class Scalar extends Node.NodeBase {
-    constructor(value) {
-        super(Node.SCALAR);
-        this.value = value;
-    }
-    toJSON(arg, ctx) {
-        return ctx?.keep ? this.value : toJS.toJS(this.value, arg, ctx);
-    }
-    toString() {
-        return String(this.value);
-    }
-}
-Scalar.BLOCK_FOLDED = 'BLOCK_FOLDED';
-Scalar.BLOCK_LITERAL = 'BLOCK_LITERAL';
-Scalar.PLAIN = 'PLAIN';
-Scalar.QUOTE_DOUBLE = 'QUOTE_DOUBLE';
-Scalar.QUOTE_SINGLE = 'QUOTE_SINGLE';
-
-exports.Scalar = Scalar;
-exports.isScalarValue = isScalarValue;
-
-
-/***/ }),
-
-/***/ 799:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-
-var stringifyCollection = __nccwpck_require__(3541);
-var addPairToJSMap = __nccwpck_require__(511);
-var Collection = __nccwpck_require__(58);
-var Node = __nccwpck_require__(1222);
-var Pair = __nccwpck_require__(1618);
-var Scalar = __nccwpck_require__(9902);
-
-function findPair(items, key) {
-    const k = Node.isScalar(key) ? key.value : key;
-    for (const it of items) {
-        if (Node.isPair(it)) {
-            if (it.key === key || it.key === k)
-                return it;
-            if (Node.isScalar(it.key) && it.key.value === k)
-                return it;
-        }
-    }
-    return undefined;
-}
-class YAMLMap extends Collection.Collection {
-    static get tagName() {
-        return 'tag:yaml.org,2002:map';
-    }
-    constructor(schema) {
-        super(Node.MAP, schema);
-        this.items = [];
-    }
-    /**
-     * Adds a value to the collection.
-     *
-     * @param overwrite - If not set `true`, using a key that is already in the
-     *   collection will throw. Otherwise, overwrites the previous value.
-     */
-    add(pair, overwrite) {
-        let _pair;
-        if (Node.isPair(pair))
-            _pair = pair;
-        else if (!pair || typeof pair !== 'object' || !('key' in pair)) {
-            // In TypeScript, this never happens.
-            _pair = new Pair.Pair(pair, pair?.value);
-        }
-        else
-            _pair = new Pair.Pair(pair.key, pair.value);
-        const prev = findPair(this.items, _pair.key);
-        const sortEntries = this.schema?.sortMapEntries;
-        if (prev) {
-            if (!overwrite)
-                throw new Error(`Key ${_pair.key} already set`);
-            // For scalars, keep the old node & its comments and anchors
-            if (Node.isScalar(prev.value) && Scalar.isScalarValue(_pair.value))
-                prev.value.value = _pair.value;
-            else
-                prev.value = _pair.value;
-        }
-        else if (sortEntries) {
-            const i = this.items.findIndex(item => sortEntries(_pair, item) < 0);
-            if (i === -1)
-                this.items.push(_pair);
-            else
-                this.items.splice(i, 0, _pair);
-        }
-        else {
-            this.items.push(_pair);
-        }
-    }
-    delete(key) {
-        const it = findPair(this.items, key);
-        if (!it)
-            return false;
-        const del = this.items.splice(this.items.indexOf(it), 1);
-        return del.length > 0;
-    }
-    get(key, keepScalar) {
-        const it = findPair(this.items, key);
-        const node = it?.value;
-        return (!keepScalar && Node.isScalar(node) ? node.value : node) ?? undefined;
-    }
-    has(key) {
-        return !!findPair(this.items, key);
-    }
-    set(key, value) {
-        this.add(new Pair.Pair(key, value), true);
-    }
-    /**
-     * @param ctx - Conversion context, originally set in Document#toJS()
-     * @param {Class} Type - If set, forces the returned collection type
-     * @returns Instance of Type, Map, or Object
-     */
-    toJSON(_, ctx, Type) {
-        const map = Type ? new Type() : ctx?.mapAsMap ? new Map() : {};
-        if (ctx?.onCreate)
-            ctx.onCreate(map);
-        for (const item of this.items)
-            addPairToJSMap.addPairToJSMap(ctx, map, item);
-        return map;
-    }
-    toString(ctx, onComment, onChompKeep) {
-        if (!ctx)
-            return JSON.stringify(this);
-        for (const item of this.items) {
-            if (!Node.isPair(item))
-                throw new Error(`Map items must all be pairs; found ${JSON.stringify(item)} instead`);
-        }
-        if (!ctx.allNullValues && this.hasAllNullValues(false))
-            ctx = Object.assign({}, ctx, { allNullValues: true });
-        return stringifyCollection.stringifyCollection(this, ctx, {
-            blockItemPrefix: '',
-            flowChars: { start: '{', end: '}' },
-            itemIndent: ctx.indent || '',
-            onChompKeep,
-            onComment
-        });
-    }
-}
-
-exports.YAMLMap = YAMLMap;
-exports.findPair = findPair;
-
-
-/***/ }),
-
-/***/ 8862:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-
-var stringifyCollection = __nccwpck_require__(3541);
-var Collection = __nccwpck_require__(58);
-var Node = __nccwpck_require__(1222);
-var Scalar = __nccwpck_require__(9902);
-var toJS = __nccwpck_require__(4776);
-
-class YAMLSeq extends Collection.Collection {
-    static get tagName() {
-        return 'tag:yaml.org,2002:seq';
-    }
-    constructor(schema) {
-        super(Node.SEQ, schema);
-        this.items = [];
-    }
-    add(value) {
-        this.items.push(value);
-    }
-    /**
-     * Removes a value from the collection.
-     *
-     * `key` must contain a representation of an integer for this to succeed.
-     * It may be wrapped in a `Scalar`.
-     *
-     * @returns `true` if the item was found and removed.
-     */
-    delete(key) {
-        const idx = asItemIndex(key);
-        if (typeof idx !== 'number')
-            return false;
-        const del = this.items.splice(idx, 1);
-        return del.length > 0;
-    }
-    get(key, keepScalar) {
-        const idx = asItemIndex(key);
-        if (typeof idx !== 'number')
-            return undefined;
-        const it = this.items[idx];
-        return !keepScalar && Node.isScalar(it) ? it.value : it;
-    }
-    /**
-     * Checks if the collection includes a value with the key `key`.
-     *
-     * `key` must contain a representation of an integer for this to succeed.
-     * It may be wrapped in a `Scalar`.
-     */
-    has(key) {
-        const idx = asItemIndex(key);
-        return typeof idx === 'number' && idx < this.items.length;
-    }
-    /**
-     * Sets a value in this collection. For `!!set`, `value` needs to be a
-     * boolean to add/remove the item from the set.
-     *
-     * If `key` does not contain a representation of an integer, this will throw.
-     * It may be wrapped in a `Scalar`.
-     */
-    set(key, value) {
-        const idx = asItemIndex(key);
-        if (typeof idx !== 'number')
-            throw new Error(`Expected a valid index, not ${key}.`);
-        const prev = this.items[idx];
-        if (Node.isScalar(prev) && Scalar.isScalarValue(value))
-            prev.value = value;
-        else
-            this.items[idx] = value;
-    }
-    toJSON(_, ctx) {
-        const seq = [];
-        if (ctx?.onCreate)
-            ctx.onCreate(seq);
-        let i = 0;
-        for (const item of this.items)
-            seq.push(toJS.toJS(item, String(i++), ctx));
-        return seq;
-    }
-    toString(ctx, onComment, onChompKeep) {
-        if (!ctx)
-            return JSON.stringify(this);
-        return stringifyCollection.stringifyCollection(this, ctx, {
-            blockItemPrefix: '- ',
-            flowChars: { start: '[', end: ']' },
-            itemIndent: (ctx.indent || '') + '  ',
-            onChompKeep,
-            onComment
-        });
-    }
-}
-function asItemIndex(key) {
-    let idx = Node.isScalar(key) ? key.value : key;
-    if (idx && typeof idx === 'string')
-        idx = Number(idx);
-    return typeof idx === 'number' && Number.isInteger(idx) && idx >= 0
-        ? idx
-        : null;
-}
-
-exports.YAMLSeq = YAMLSeq;
-
-
-/***/ }),
-
-/***/ 511:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-
-var log = __nccwpck_require__(224);
-var stringify = __nccwpck_require__(9757);
-var Node = __nccwpck_require__(1222);
-var Scalar = __nccwpck_require__(9902);
-var toJS = __nccwpck_require__(4776);
-
-const MERGE_KEY = '<<';
-function addPairToJSMap(ctx, map, { key, value }) {
-    if (ctx?.doc.schema.merge && isMergeKey(key)) {
-        value = Node.isAlias(value) ? value.resolve(ctx.doc) : value;
-        if (Node.isSeq(value))
-            for (const it of value.items)
-                mergeToJSMap(ctx, map, it);
-        else if (Array.isArray(value))
-            for (const it of value)
-                mergeToJSMap(ctx, map, it);
-        else
-            mergeToJSMap(ctx, map, value);
-    }
-    else {
-        const jsKey = toJS.toJS(key, '', ctx);
-        if (map instanceof Map) {
-            map.set(jsKey, toJS.toJS(value, jsKey, ctx));
-        }
-        else if (map instanceof Set) {
-            map.add(jsKey);
-        }
-        else {
-            const stringKey = stringifyKey(key, jsKey, ctx);
-            const jsValue = toJS.toJS(value, stringKey, ctx);
-            if (stringKey in map)
-                Object.defineProperty(map, stringKey, {
-                    value: jsValue,
-                    writable: true,
-                    enumerable: true,
-                    configurable: true
-                });
-            else
-                map[stringKey] = jsValue;
-        }
-    }
-    return map;
-}
-const isMergeKey = (key) => key === MERGE_KEY ||
-    (Node.isScalar(key) &&
-        key.value === MERGE_KEY &&
-        (!key.type || key.type === Scalar.Scalar.PLAIN));
-// If the value associated with a merge key is a single mapping node, each of
-// its key/value pairs is inserted into the current mapping, unless the key
-// already exists in it. If the value associated with the merge key is a
-// sequence, then this sequence is expected to contain mapping nodes and each
-// of these nodes is merged in turn according to its order in the sequence.
-// Keys in mapping nodes earlier in the sequence override keys specified in
-// later mapping nodes. -- http://yaml.org/type/merge.html
-function mergeToJSMap(ctx, map, value) {
-    const source = ctx && Node.isAlias(value) ? value.resolve(ctx.doc) : value;
-    if (!Node.isMap(source))
-        throw new Error('Merge sources must be maps or map aliases');
-    const srcMap = source.toJSON(null, ctx, Map);
-    for (const [key, value] of srcMap) {
-        if (map instanceof Map) {
-            if (!map.has(key))
-                map.set(key, value);
-        }
-        else if (map instanceof Set) {
-            map.add(key);
-        }
-        else if (!Object.prototype.hasOwnProperty.call(map, key)) {
-            Object.defineProperty(map, key, {
-                value,
-                writable: true,
-                enumerable: true,
-                configurable: true
-            });
-        }
-    }
-    return map;
-}
-function stringifyKey(key, jsKey, ctx) {
-    if (jsKey === null)
-        return '';
-    if (typeof jsKey !== 'object')
-        return String(jsKey);
-    if (Node.isNode(key) && ctx && ctx.doc) {
-        const strCtx = stringify.createStringifyContext(ctx.doc, {});
-        strCtx.anchors = new Set();
-        for (const node of ctx.anchors.keys())
-            strCtx.anchors.add(node.anchor);
-        strCtx.inFlow = true;
-        strCtx.inStringifyKey = true;
-        const strKey = key.toString(strCtx);
-        if (!ctx.mapKeyWarned) {
-            let jsonStr = JSON.stringify(strKey);
-            if (jsonStr.length > 40)
-                jsonStr = jsonStr.substring(0, 36) + '..."';
-            log.warn(ctx.doc.options.logLevel, `Keys with collection values will be stringified due to JS Object restrictions: ${jsonStr}. Set mapAsMap: true to use object keys.`);
-            ctx.mapKeyWarned = true;
-        }
-        return strKey;
-    }
-    return JSON.stringify(jsKey);
-}
-
-exports.addPairToJSMap = addPairToJSMap;
-
-
-/***/ }),
-
-/***/ 4776:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
-
-
-
-var Node = __nccwpck_require__(1222);
+var identity = __nccwpck_require__(2222);
 
 /**
  * Recursively convert any node or its contents to native JavaScript
@@ -75336,7 +75971,7 @@ function toJS(value, arg, ctx) {
         return value.map((v, i) => toJS(v, String(i), ctx));
     if (value && typeof value.toJSON === 'function') {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        if (!ctx || !Node.hasAnchor(value))
+        if (!ctx || !identity.hasAnchor(value))
             return value.toJSON(arg, ctx);
         const data = { aliasCount: 0, count: 1, res: undefined };
         ctx.anchors.set(value, data);
@@ -75359,15 +75994,15 @@ exports.toJS = toJS;
 
 /***/ }),
 
-/***/ 7561:
+/***/ 3075:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var resolveBlockScalar = __nccwpck_require__(8250);
-var resolveFlowScalar = __nccwpck_require__(863);
-var errors = __nccwpck_require__(4335);
-var stringifyString = __nccwpck_require__(880);
+var resolveBlockScalar = __nccwpck_require__(140);
+var resolveFlowScalar = __nccwpck_require__(2481);
+var errors = __nccwpck_require__(8229);
+var stringifyString = __nccwpck_require__(9786);
 
 function resolveAsScalar(token, strict = true, onError) {
     if (token) {
@@ -75384,7 +76019,7 @@ function resolveAsScalar(token, strict = true, onError) {
             case 'double-quoted-scalar':
                 return resolveFlowScalar.resolveFlowScalar(token, strict, _onError);
             case 'block-scalar':
-                return resolveBlockScalar.resolveBlockScalar(token, strict, _onError);
+                return resolveBlockScalar.resolveBlockScalar({ options: { strict } }, token, _onError);
         }
     }
     return null;
@@ -75584,7 +76219,7 @@ exports.setScalarValue = setScalarValue;
 
 /***/ }),
 
-/***/ 2564:
+/***/ 4634:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -75654,7 +76289,7 @@ exports.stringify = stringify;
 
 /***/ }),
 
-/***/ 7542:
+/***/ 6592:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -75760,14 +76395,14 @@ exports.visit = visit;
 
 /***/ }),
 
-/***/ 3316:
+/***/ 5110:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var cstScalar = __nccwpck_require__(7561);
-var cstStringify = __nccwpck_require__(2564);
-var cstVisit = __nccwpck_require__(7542);
+var cstScalar = __nccwpck_require__(3075);
+var cstStringify = __nccwpck_require__(4634);
+var cstVisit = __nccwpck_require__(6592);
 
 /** The byte order mark */
 const BOM = '\u{FEFF}';
@@ -75879,12 +76514,12 @@ exports.tokenType = tokenType;
 
 /***/ }),
 
-/***/ 9956:
+/***/ 2826:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var cst = __nccwpck_require__(3316);
+var cst = __nccwpck_require__(5110);
 
 /*
 START -> stream
@@ -75965,11 +76600,11 @@ function isEmpty(ch) {
             return false;
     }
 }
-const hexDigits = '0123456789ABCDEFabcdef'.split('');
-const tagChars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-#;/?:@&=+$_.!~*'()".split('');
-const invalidFlowScalarChars = ',[]{}'.split('');
-const invalidAnchorChars = ' ,[]{}\n\r\t'.split('');
-const isNotAnchorChar = (ch) => !ch || invalidAnchorChars.includes(ch);
+const hexDigits = new Set('0123456789ABCDEFabcdef');
+const tagChars = new Set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-#;/?:@&=+$_.!~*'()");
+const flowIndicatorChars = new Set(',[]{}');
+const invalidAnchorChars = new Set(' ,[]{}\n\r\t');
+const isNotAnchorChar = (ch) => !ch || invalidAnchorChars.has(ch);
 /**
  * Splits an input string into lexical tokens, i.e. smaller strings that are
  * easily identifiable by `tokens.tokenType()`.
@@ -76035,6 +76670,8 @@ class Lexer {
      */
     *lex(source, incomplete = false) {
         if (source) {
+            if (typeof source !== 'string')
+                throw TypeError('source is not a string');
             this.buffer = this.buffer ? this.buffer + source : source;
             this.lineEndPos = null;
         }
@@ -76134,11 +76771,16 @@ class Lexer {
         }
         if (line[0] === '%') {
             let dirEnd = line.length;
-            const cs = line.indexOf('#');
-            if (cs !== -1) {
+            let cs = line.indexOf('#');
+            while (cs !== -1) {
                 const ch = line[cs - 1];
-                if (ch === ' ' || ch === '\t')
+                if (ch === ' ' || ch === '\t') {
                     dirEnd = cs - 1;
+                    break;
+                }
+                else {
+                    cs = line.indexOf('#', cs + 1);
+                }
             }
             while (true) {
                 const ch = line[dirEnd - 1];
@@ -76169,15 +76811,11 @@ class Lexer {
             if (!this.atEnd && !this.hasChars(4))
                 return this.setNext('line-start');
             const s = this.peek(3);
-            if (s === '---' && isEmpty(this.charAt(3))) {
+            if ((s === '---' || s === '...') && isEmpty(this.charAt(3))) {
                 yield* this.pushCount(3);
                 this.indentValue = 0;
                 this.indentNext = 0;
-                return 'doc';
-            }
-            else if (s === '...' && isEmpty(this.charAt(3))) {
-                yield* this.pushCount(3);
-                return 'stream';
+                return s === '---' ? 'doc' : 'stream';
             }
         }
         this.indentValue = yield* this.pushSpaces(false);
@@ -76193,7 +76831,7 @@ class Lexer {
             const n = (yield* this.pushCount(1)) + (yield* this.pushSpaces(true));
             this.indentNext = this.indentValue + 1;
             this.indentValue += n;
-            return yield* this.parseBlockStart();
+            return 'block-start';
         }
         return 'doc';
     }
@@ -76404,8 +77042,10 @@ class Lexer {
         if (indent >= this.indentNext) {
             if (this.blockScalarIndent === -1)
                 this.indentNext = indent;
-            else
-                this.indentNext += this.blockScalarIndent;
+            else {
+                this.indentNext =
+                    this.blockScalarIndent + (this.indentNext === 0 ? 1 : this.indentNext);
+            }
             do {
                 const cs = this.continueScalar(nl + 1);
                 if (cs === -1)
@@ -76418,14 +77058,25 @@ class Lexer {
                 nl = this.buffer.length;
             }
         }
-        if (!this.blockScalarKeep) {
+        // Trailing insufficiently indented tabs are invalid.
+        // To catch that during parsing, we include them in the block scalar value.
+        let i = nl + 1;
+        ch = this.buffer[i];
+        while (ch === ' ')
+            ch = this.buffer[++i];
+        if (ch === '\t') {
+            while (ch === '\t' || ch === ' ' || ch === '\r' || ch === '\n')
+                ch = this.buffer[++i];
+            nl = i - 1;
+        }
+        else if (!this.blockScalarKeep) {
             do {
                 let i = nl - 1;
                 let ch = this.buffer[i];
                 if (ch === '\r')
                     ch = this.buffer[--i];
                 const lastChar = i; // Drop the line if last char not more indented
-                while (ch === ' ' || ch === '\t')
+                while (ch === ' ')
                     ch = this.buffer[--i];
                 if (ch === '\n' && i >= this.pos && i + 1 + indent > lastChar)
                     nl = i;
@@ -76445,7 +77096,7 @@ class Lexer {
         while ((ch = this.buffer[++i])) {
             if (ch === ':') {
                 const next = this.buffer[i + 1];
-                if (isEmpty(next) || (inFlow && next === ','))
+                if (isEmpty(next) || (inFlow && flowIndicatorChars.has(next)))
                     break;
                 end = i;
             }
@@ -76460,7 +77111,7 @@ class Lexer {
                     else
                         end = i;
                 }
-                if (next === '#' || (inFlow && invalidFlowScalarChars.includes(next)))
+                if (next === '#' || (inFlow && flowIndicatorChars.has(next)))
                     break;
                 if (ch === '\n') {
                     const cs = this.continueScalar(i + 1);
@@ -76470,7 +77121,7 @@ class Lexer {
                 }
             }
             else {
-                if (inFlow && invalidFlowScalarChars.includes(ch))
+                if (inFlow && flowIndicatorChars.has(ch))
                     break;
                 end = i;
             }
@@ -76501,32 +77152,36 @@ class Lexer {
         return 0;
     }
     *pushIndicators() {
-        switch (this.charAt(0)) {
-            case '!':
-                return ((yield* this.pushTag()) +
-                    (yield* this.pushSpaces(true)) +
-                    (yield* this.pushIndicators()));
-            case '&':
-                return ((yield* this.pushUntil(isNotAnchorChar)) +
-                    (yield* this.pushSpaces(true)) +
-                    (yield* this.pushIndicators()));
-            case '-': // this is an error
-            case '?': // this is an error outside flow collections
-            case ':': {
-                const inFlow = this.flowLevel > 0;
-                const ch1 = this.charAt(1);
-                if (isEmpty(ch1) || (inFlow && invalidFlowScalarChars.includes(ch1))) {
-                    if (!inFlow)
-                        this.indentNext = this.indentValue + 1;
-                    else if (this.flowKey)
-                        this.flowKey = false;
-                    return ((yield* this.pushCount(1)) +
-                        (yield* this.pushSpaces(true)) +
-                        (yield* this.pushIndicators()));
+        let n = 0;
+        loop: while (true) {
+            switch (this.charAt(0)) {
+                case '!':
+                    n += yield* this.pushTag();
+                    n += yield* this.pushSpaces(true);
+                    continue loop;
+                case '&':
+                    n += yield* this.pushUntil(isNotAnchorChar);
+                    n += yield* this.pushSpaces(true);
+                    continue loop;
+                case '-': // this is an error
+                case '?': // this is an error outside flow collections
+                case ':': {
+                    const inFlow = this.flowLevel > 0;
+                    const ch1 = this.charAt(1);
+                    if (isEmpty(ch1) || (inFlow && flowIndicatorChars.has(ch1))) {
+                        if (!inFlow)
+                            this.indentNext = this.indentValue + 1;
+                        else if (this.flowKey)
+                            this.flowKey = false;
+                        n += yield* this.pushCount(1);
+                        n += yield* this.pushSpaces(true);
+                        continue loop;
+                    }
                 }
             }
+            break loop;
         }
-        return 0;
+        return n;
     }
     *pushTag() {
         if (this.charAt(1) === '<') {
@@ -76540,11 +77195,11 @@ class Lexer {
             let i = this.pos + 1;
             let ch = this.buffer[i];
             while (ch) {
-                if (tagChars.includes(ch))
+                if (tagChars.has(ch))
                     ch = this.buffer[++i];
                 else if (ch === '%' &&
-                    hexDigits.includes(this.buffer[i + 1]) &&
-                    hexDigits.includes(this.buffer[i + 2])) {
+                    hexDigits.has(this.buffer[i + 1]) &&
+                    hexDigits.has(this.buffer[i + 2])) {
                     ch = this.buffer[(i += 3)];
                 }
                 else
@@ -76589,7 +77244,7 @@ exports.Lexer = Lexer;
 
 /***/ }),
 
-/***/ 3303:
+/***/ 5137:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -76637,13 +77292,14 @@ exports.LineCounter = LineCounter;
 
 /***/ }),
 
-/***/ 9803:
+/***/ 4693:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var cst = __nccwpck_require__(3316);
-var lexer = __nccwpck_require__(9956);
+var node_process = __nccwpck_require__(932);
+var cst = __nccwpck_require__(5110);
+var lexer = __nccwpck_require__(2826);
 
 function includesToken(list, type) {
     for (let i = 0; i < list.length; ++i)
@@ -76711,6 +77367,14 @@ function getFirstKeyStartProps(prev) {
     }
     return prev.splice(i, prev.length);
 }
+function arrayPushArray(target, source) {
+    // May exhaust call stack with large `source` array
+    if (source.length < 1e5)
+        Array.prototype.push.apply(target, source);
+    else
+        for (let i = 0; i < source.length; ++i)
+            target.push(source[i]);
+}
 function fixFlowSeqItems(fc) {
     if (fc.start.type === 'flow-seq-start') {
         for (const it of fc.items) {
@@ -76723,12 +77387,12 @@ function fixFlowSeqItems(fc) {
                 delete it.key;
                 if (isFlowToken(it.value)) {
                     if (it.value.end)
-                        Array.prototype.push.apply(it.value.end, it.sep);
+                        arrayPushArray(it.value.end, it.sep);
                     else
                         it.value.end = it.sep;
                 }
                 else
-                    Array.prototype.push.apply(it.start, it.sep);
+                    arrayPushArray(it.start, it.sep);
                 delete it.sep;
             }
         }
@@ -76808,7 +77472,7 @@ class Parser {
      */
     *next(source) {
         this.source = source;
-        if (process.env.LOG_TOKENS)
+        if (node_process.env.LOG_TOKENS)
             console.log('|', cst.prettyToken(source));
         if (this.atScalar) {
             this.atScalar = false;
@@ -76872,7 +77536,7 @@ class Parser {
     }
     *step() {
         const top = this.peek(1);
-        if (this.type === 'doc-end' && (!top || top.type !== 'doc-end')) {
+        if (this.type === 'doc-end' && top?.type !== 'doc-end') {
             while (this.stack.length > 0)
                 yield* this.pop();
             this.stack.push({
@@ -76950,7 +77614,7 @@ class Parser {
                     }
                     else {
                         Object.assign(it, { key: token, sep: [] });
-                        this.onKeyLine = !includesToken(it.start, 'explicit-key-ind');
+                        this.onKeyLine = !it.explicitKey;
                         return;
                     }
                     break;
@@ -77148,7 +77812,7 @@ class Parser {
                         const prev = map.items[map.items.length - 2];
                         const end = prev?.value?.end;
                         if (Array.isArray(end)) {
-                            Array.prototype.push.apply(end, it.start);
+                            arrayPushArray(end, it.start);
                             end.push(this.sourceToken);
                             map.items.pop();
                             return;
@@ -77159,7 +77823,10 @@ class Parser {
                 return;
         }
         if (this.indent >= map.indent) {
-            const atNextItem = !this.onKeyLine && this.indent === map.indent && it.sep;
+            const atMapIndent = !this.onKeyLine && this.indent === map.indent;
+            const atNextItem = atMapIndent &&
+                (it.sep || it.explicitKey) &&
+                this.type !== 'seq-item-ind';
             // For empty nodes, assign newline-separated not indented empty tokens to following node
             let start = [];
             if (atNextItem && it.sep && !it.value) {
@@ -77199,25 +77866,26 @@ class Parser {
                     }
                     return;
                 case 'explicit-key-ind':
-                    if (!it.sep && !includesToken(it.start, 'explicit-key-ind')) {
+                    if (!it.sep && !it.explicitKey) {
                         it.start.push(this.sourceToken);
+                        it.explicitKey = true;
                     }
                     else if (atNextItem || it.value) {
                         start.push(this.sourceToken);
-                        map.items.push({ start });
+                        map.items.push({ start, explicitKey: true });
                     }
                     else {
                         this.stack.push({
                             type: 'block-map',
                             offset: this.offset,
                             indent: this.indent,
-                            items: [{ start: [this.sourceToken] }]
+                            items: [{ start: [this.sourceToken], explicitKey: true }]
                         });
                     }
                     this.onKeyLine = true;
                     return;
                 case 'map-value-ind':
-                    if (includesToken(it.start, 'explicit-key-ind')) {
+                    if (it.explicitKey) {
                         if (!it.sep) {
                             if (includesToken(it.start, 'newline')) {
                                 Object.assign(it, { key: null, sep: [this.sourceToken] });
@@ -77250,7 +77918,9 @@ class Parser {
                             const sep = it.sep;
                             sep.push(this.sourceToken);
                             // @ts-expect-error type guard is wrong here
-                            delete it.key, delete it.sep;
+                            delete it.key;
+                            // @ts-expect-error type guard is wrong here
+                            delete it.sep;
                             this.stack.push({
                                 type: 'block-map',
                                 offset: this.offset,
@@ -77308,9 +77978,20 @@ class Parser {
                 default: {
                     const bv = this.startBlockValue(map);
                     if (bv) {
-                        if (atNextItem &&
-                            bv.type !== 'block-seq' &&
-                            includesToken(it.start, 'explicit-key-ind')) {
+                        if (bv.type === 'block-seq') {
+                            if (!it.explicitKey &&
+                                it.sep &&
+                                !includesToken(it.sep, 'newline')) {
+                                yield* this.pop({
+                                    type: 'error',
+                                    offset: this.offset,
+                                    message: 'Unexpected block-seq-ind on same line with key',
+                                    source: this.source
+                                });
+                                return;
+                            }
+                        }
+                        else if (atMapIndent) {
                             map.items.push({ start });
                         }
                         this.stack.push(bv);
@@ -77346,7 +78027,7 @@ class Parser {
                         const prev = seq.items[seq.items.length - 2];
                         const end = prev?.value?.end;
                         if (Array.isArray(end)) {
-                            Array.prototype.push.apply(end, it.start);
+                            arrayPushArray(end, it.start);
                             end.push(this.sourceToken);
                             seq.items.pop();
                             return;
@@ -77387,7 +78068,7 @@ class Parser {
             do {
                 yield* this.pop();
                 top = this.peek(1);
-            } while (top && top.type === 'flow-collection');
+            } while (top?.type === 'flow-collection');
         }
         else if (fc.end.length === 0) {
             switch (this.type) {
@@ -77531,7 +78212,7 @@ class Parser {
                     type: 'block-map',
                     offset: this.offset,
                     indent: this.indent,
-                    items: [{ start }]
+                    items: [{ start, explicitKey: true }]
                 };
             }
             case 'map-value-ind': {
@@ -77598,17 +78279,18 @@ exports.Parser = Parser;
 
 /***/ }),
 
-/***/ 3480:
+/***/ 7330:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var composer = __nccwpck_require__(5987);
-var Document = __nccwpck_require__(18);
-var errors = __nccwpck_require__(4335);
-var log = __nccwpck_require__(224);
-var lineCounter = __nccwpck_require__(3303);
-var parser = __nccwpck_require__(9803);
+var composer = __nccwpck_require__(2493);
+var Document = __nccwpck_require__(8396);
+var errors = __nccwpck_require__(8229);
+var log = __nccwpck_require__(4350);
+var identity = __nccwpck_require__(2222);
+var lineCounter = __nccwpck_require__(5137);
+var parser = __nccwpck_require__(4693);
 
 function parseOptions(options) {
     const prettyErrors = options.prettyErrors !== false;
@@ -77698,6 +78380,8 @@ function stringify(value, replacer, options) {
         if (!keepUndefined)
             return undefined;
     }
+    if (identity.isDocument(value) && !_replacer)
+        return value.toString(options);
     return new Document.Document(value, _replacer, options).toString(options);
 }
 
@@ -77709,16 +78393,16 @@ exports.stringify = stringify;
 
 /***/ }),
 
-/***/ 7693:
+/***/ 6519:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Node = __nccwpck_require__(1222);
-var map = __nccwpck_require__(4586);
-var seq = __nccwpck_require__(6547);
-var string = __nccwpck_require__(3823);
-var tags = __nccwpck_require__(7611);
+var identity = __nccwpck_require__(2222);
+var map = __nccwpck_require__(8144);
+var seq = __nccwpck_require__(3445);
+var string = __nccwpck_require__(593);
+var tags = __nccwpck_require__(7645);
 
 const sortMapEntriesByKey = (a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
 class Schema {
@@ -77728,14 +78412,13 @@ class Schema {
             : compat
                 ? tags.getTags(null, compat)
                 : null;
-        this.merge = !!merge;
         this.name = (typeof schema === 'string' && schema) || 'core';
         this.knownTags = resolveKnownTags ? tags.coreKnownTags : {};
-        this.tags = tags.getTags(customTags, this.name);
+        this.tags = tags.getTags(customTags, this.name, merge);
         this.toStringOptions = toStringDefaults ?? null;
-        Object.defineProperty(this, Node.MAP, { value: map.map });
-        Object.defineProperty(this, Node.SCALAR, { value: string.string });
-        Object.defineProperty(this, Node.SEQ, { value: seq.seq });
+        Object.defineProperty(this, identity.MAP, { value: map.map });
+        Object.defineProperty(this, identity.SCALAR, { value: string.string });
+        Object.defineProperty(this, identity.SEQ, { value: seq.seq });
         // Used by createMap()
         this.sortMapEntries =
             typeof sortMapEntries === 'function'
@@ -77756,50 +78439,25 @@ exports.Schema = Schema;
 
 /***/ }),
 
-/***/ 4586:
+/***/ 8144:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Node = __nccwpck_require__(1222);
-var Pair = __nccwpck_require__(1618);
-var YAMLMap = __nccwpck_require__(799);
+var identity = __nccwpck_require__(2222);
+var YAMLMap = __nccwpck_require__(1877);
 
-function createMap(schema, obj, ctx) {
-    const { keepUndefined, replacer } = ctx;
-    const map = new YAMLMap.YAMLMap(schema);
-    const add = (key, value) => {
-        if (typeof replacer === 'function')
-            value = replacer.call(obj, key, value);
-        else if (Array.isArray(replacer) && !replacer.includes(key))
-            return;
-        if (value !== undefined || keepUndefined)
-            map.items.push(Pair.createPair(key, value, ctx));
-    };
-    if (obj instanceof Map) {
-        for (const [key, value] of obj)
-            add(key, value);
-    }
-    else if (obj && typeof obj === 'object') {
-        for (const key of Object.keys(obj))
-            add(key, obj[key]);
-    }
-    if (typeof schema.sortMapEntries === 'function') {
-        map.items.sort(schema.sortMapEntries);
-    }
-    return map;
-}
 const map = {
     collection: 'map',
-    createNode: createMap,
     default: true,
     nodeClass: YAMLMap.YAMLMap,
     tag: 'tag:yaml.org,2002:map',
     resolve(map, onError) {
-        if (!Node.isMap(map))
+        if (!identity.isMap(map))
             onError('Expected a mapping for this tag');
         return map;
-    }
+    },
+    createNode: (schema, obj, ctx) => YAMLMap.YAMLMap.from(schema, obj, ctx)
 };
 
 exports.map = map;
@@ -77807,12 +78465,12 @@ exports.map = map;
 
 /***/ }),
 
-/***/ 7227:
+/***/ 5929:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Scalar = __nccwpck_require__(9902);
+var Scalar = __nccwpck_require__(7404);
 
 const nullTag = {
     identify: value => value == null,
@@ -77831,41 +78489,25 @@ exports.nullTag = nullTag;
 
 /***/ }),
 
-/***/ 6547:
+/***/ 3445:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var createNode = __nccwpck_require__(687);
-var Node = __nccwpck_require__(1222);
-var YAMLSeq = __nccwpck_require__(8862);
+var identity = __nccwpck_require__(2222);
+var YAMLSeq = __nccwpck_require__(2400);
 
-function createSeq(schema, obj, ctx) {
-    const { replacer } = ctx;
-    const seq = new YAMLSeq.YAMLSeq(schema);
-    if (obj && Symbol.iterator in Object(obj)) {
-        let i = 0;
-        for (let it of obj) {
-            if (typeof replacer === 'function') {
-                const key = obj instanceof Set ? it : String(i++);
-                it = replacer.call(obj, key, it);
-            }
-            seq.items.push(createNode.createNode(it, undefined, ctx));
-        }
-    }
-    return seq;
-}
 const seq = {
     collection: 'seq',
-    createNode: createSeq,
     default: true,
     nodeClass: YAMLSeq.YAMLSeq,
     tag: 'tag:yaml.org,2002:seq',
     resolve(seq, onError) {
-        if (!Node.isSeq(seq))
+        if (!identity.isSeq(seq))
             onError('Expected a sequence for this tag');
         return seq;
-    }
+    },
+    createNode: (schema, obj, ctx) => YAMLSeq.YAMLSeq.from(schema, obj, ctx)
 };
 
 exports.seq = seq;
@@ -77873,12 +78515,12 @@ exports.seq = seq;
 
 /***/ }),
 
-/***/ 3823:
+/***/ 593:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var stringifyString = __nccwpck_require__(880);
+var stringifyString = __nccwpck_require__(9786);
 
 const string = {
     identify: value => typeof value === 'string',
@@ -77896,12 +78538,12 @@ exports.string = string;
 
 /***/ }),
 
-/***/ 896:
+/***/ 5626:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Scalar = __nccwpck_require__(9902);
+var Scalar = __nccwpck_require__(7404);
 
 const boolTag = {
     identify: value => typeof value === 'boolean',
@@ -77924,19 +78566,19 @@ exports.boolTag = boolTag;
 
 /***/ }),
 
-/***/ 528:
+/***/ 7666:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Scalar = __nccwpck_require__(9902);
-var stringifyNumber = __nccwpck_require__(5972);
+var Scalar = __nccwpck_require__(7404);
+var stringifyNumber = __nccwpck_require__(8970);
 
 const floatNaN = {
     identify: value => typeof value === 'number',
     default: true,
     tag: 'tag:yaml.org,2002:float',
-    test: /^(?:[-+]?\.(?:inf|Inf|INF|nan|NaN|NAN))$/,
+    test: /^(?:[-+]?\.(?:inf|Inf|INF)|\.nan|\.NaN|\.NAN)$/,
     resolve: str => str.slice(-3).toLowerCase() === 'nan'
         ? NaN
         : str[0] === '-'
@@ -77978,12 +78620,12 @@ exports.floatNaN = floatNaN;
 
 /***/ }),
 
-/***/ 6303:
+/***/ 997:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var stringifyNumber = __nccwpck_require__(5972);
+var stringifyNumber = __nccwpck_require__(8970);
 
 const intIdentify = (value) => typeof value === 'bigint' || Number.isInteger(value);
 const intResolve = (str, offset, radix, { intAsBigInt }) => (intAsBigInt ? BigInt(str) : parseInt(str.substring(offset), radix));
@@ -78027,18 +78669,18 @@ exports.intOct = intOct;
 
 /***/ }),
 
-/***/ 7703:
+/***/ 3629:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var map = __nccwpck_require__(4586);
-var _null = __nccwpck_require__(7227);
-var seq = __nccwpck_require__(6547);
-var string = __nccwpck_require__(3823);
-var bool = __nccwpck_require__(896);
-var float = __nccwpck_require__(528);
-var int = __nccwpck_require__(6303);
+var map = __nccwpck_require__(8144);
+var _null = __nccwpck_require__(5929);
+var seq = __nccwpck_require__(3445);
+var string = __nccwpck_require__(593);
+var bool = __nccwpck_require__(5626);
+var float = __nccwpck_require__(7666);
+var int = __nccwpck_require__(997);
 
 const schema = [
     map.map,
@@ -78059,14 +78701,14 @@ exports.schema = schema;
 
 /***/ }),
 
-/***/ 5016:
+/***/ 642:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Scalar = __nccwpck_require__(9902);
-var map = __nccwpck_require__(4586);
-var seq = __nccwpck_require__(6547);
+var Scalar = __nccwpck_require__(7404);
+var map = __nccwpck_require__(8144);
+var seq = __nccwpck_require__(3445);
 
 function intIdentify(value) {
     return typeof value === 'bigint' || Number.isInteger(value);
@@ -78093,7 +78735,7 @@ const jsonScalars = [
         identify: value => typeof value === 'boolean',
         default: true,
         tag: 'tag:yaml.org,2002:bool',
-        test: /^true|false$/,
+        test: /^true$|^false$/,
         resolve: str => str === 'true',
         stringify: stringifyJSON
     },
@@ -78130,26 +78772,27 @@ exports.schema = schema;
 
 /***/ }),
 
-/***/ 7611:
+/***/ 7645:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var map = __nccwpck_require__(4586);
-var _null = __nccwpck_require__(7227);
-var seq = __nccwpck_require__(6547);
-var string = __nccwpck_require__(3823);
-var bool = __nccwpck_require__(896);
-var float = __nccwpck_require__(528);
-var int = __nccwpck_require__(6303);
-var schema = __nccwpck_require__(7703);
-var schema$1 = __nccwpck_require__(5016);
-var binary = __nccwpck_require__(7908);
-var omap = __nccwpck_require__(9520);
-var pairs = __nccwpck_require__(1444);
-var schema$2 = __nccwpck_require__(4778);
-var set = __nccwpck_require__(9985);
-var timestamp = __nccwpck_require__(3497);
+var map = __nccwpck_require__(8144);
+var _null = __nccwpck_require__(5929);
+var seq = __nccwpck_require__(3445);
+var string = __nccwpck_require__(593);
+var bool = __nccwpck_require__(5626);
+var float = __nccwpck_require__(7666);
+var int = __nccwpck_require__(997);
+var schema = __nccwpck_require__(3629);
+var schema$1 = __nccwpck_require__(642);
+var binary = __nccwpck_require__(2502);
+var merge = __nccwpck_require__(2435);
+var omap = __nccwpck_require__(1994);
+var pairs = __nccwpck_require__(6262);
+var schema$2 = __nccwpck_require__(4824);
+var set = __nccwpck_require__(5711);
+var timestamp = __nccwpck_require__(7591);
 
 const schemas = new Map([
     ['core', schema.schema],
@@ -78170,6 +78813,7 @@ const tagsByName = {
     intOct: int.intOct,
     intTime: timestamp.intTime,
     map: map.map,
+    merge: merge.merge,
     null: _null.nullTag,
     omap: omap.omap,
     pairs: pairs.pairs,
@@ -78179,13 +78823,20 @@ const tagsByName = {
 };
 const coreKnownTags = {
     'tag:yaml.org,2002:binary': binary.binary,
+    'tag:yaml.org,2002:merge': merge.merge,
     'tag:yaml.org,2002:omap': omap.omap,
     'tag:yaml.org,2002:pairs': pairs.pairs,
     'tag:yaml.org,2002:set': set.set,
     'tag:yaml.org,2002:timestamp': timestamp.timestamp
 };
-function getTags(customTags, schemaName) {
-    let tags = schemas.get(schemaName);
+function getTags(customTags, schemaName, addMergeTag) {
+    const schemaTags = schemas.get(schemaName);
+    if (schemaTags && !customTags) {
+        return addMergeTag && !schemaTags.includes(merge.merge)
+            ? schemaTags.concat(merge.merge)
+            : schemaTags.slice();
+    }
+    let tags = schemaTags;
     if (!tags) {
         if (Array.isArray(customTags))
             tags = [];
@@ -78204,17 +78855,21 @@ function getTags(customTags, schemaName) {
     else if (typeof customTags === 'function') {
         tags = customTags(tags.slice());
     }
-    return tags.map(tag => {
-        if (typeof tag !== 'string')
-            return tag;
-        const tagObj = tagsByName[tag];
-        if (tagObj)
-            return tagObj;
-        const keys = Object.keys(tagsByName)
-            .map(key => JSON.stringify(key))
-            .join(', ');
-        throw new Error(`Unknown custom tag "${tag}"; use one of ${keys}`);
-    });
+    if (addMergeTag)
+        tags = tags.concat(merge.merge);
+    return tags.reduce((tags, tag) => {
+        const tagObj = typeof tag === 'string' ? tagsByName[tag] : tag;
+        if (!tagObj) {
+            const tagName = JSON.stringify(tag);
+            const keys = Object.keys(tagsByName)
+                .map(key => JSON.stringify(key))
+                .join(', ');
+            throw new Error(`Unknown custom tag ${tagName}; use one of ${keys}`);
+        }
+        if (!tags.includes(tagObj))
+            tags.push(tagObj);
+        return tags;
+    }, []);
 }
 
 exports.coreKnownTags = coreKnownTags;
@@ -78223,16 +78878,17 @@ exports.getTags = getTags;
 
 /***/ }),
 
-/***/ 7908:
+/***/ 2502:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Scalar = __nccwpck_require__(9902);
-var stringifyString = __nccwpck_require__(880);
+var node_buffer = __nccwpck_require__(181);
+var Scalar = __nccwpck_require__(7404);
+var stringifyString = __nccwpck_require__(9786);
 
 const binary = {
-    identify: value => value instanceof Uint8Array,
+    identify: value => value instanceof Uint8Array, // Buffer inherits from Uint8Array
     default: false,
     tag: 'tag:yaml.org,2002:binary',
     /**
@@ -78244,8 +78900,8 @@ const binary = {
      *   document.querySelector('#photo').src = URL.createObjectURL(blob)
      */
     resolve(src, onError) {
-        if (typeof Buffer === 'function') {
-            return Buffer.from(src, 'base64');
+        if (typeof node_buffer.Buffer === 'function') {
+            return node_buffer.Buffer.from(src, 'base64');
         }
         else if (typeof atob === 'function') {
             // On IE 11, atob() can't handle newlines
@@ -78261,13 +78917,15 @@ const binary = {
         }
     },
     stringify({ comment, type, value }, ctx, onComment, onChompKeep) {
+        if (!value)
+            return '';
         const buf = value; // checked earlier by binary.identify()
         let str;
-        if (typeof Buffer === 'function') {
+        if (typeof node_buffer.Buffer === 'function') {
             str =
-                buf instanceof Buffer
+                buf instanceof node_buffer.Buffer
                     ? buf.toString('base64')
-                    : Buffer.from(buf.buffer).toString('base64');
+                    : node_buffer.Buffer.from(buf.buffer).toString('base64');
         }
         else if (typeof btoa === 'function') {
             let s = '';
@@ -78278,8 +78936,7 @@ const binary = {
         else {
             throw new Error('This environment does not support writing binary tags; either Buffer or btoa is required');
         }
-        if (!type)
-            type = Scalar.Scalar.BLOCK_LITERAL;
+        type ?? (type = Scalar.Scalar.BLOCK_LITERAL);
         if (type !== Scalar.Scalar.QUOTE_DOUBLE) {
             const lineWidth = Math.max(ctx.options.lineWidth - ctx.indent.length, ctx.options.minContentWidth);
             const n = Math.ceil(str.length / lineWidth);
@@ -78298,12 +78955,12 @@ exports.binary = binary;
 
 /***/ }),
 
-/***/ 917:
+/***/ 6799:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Scalar = __nccwpck_require__(9902);
+var Scalar = __nccwpck_require__(7404);
 
 function boolStringify({ value, source }, ctx) {
     const boolObj = value ? trueTag : falseTag;
@@ -78323,7 +78980,7 @@ const falseTag = {
     identify: value => value === false,
     default: true,
     tag: 'tag:yaml.org,2002:bool',
-    test: /^(?:N|n|[Nn]o|NO|[Ff]alse|FALSE|[Oo]ff|OFF)$/i,
+    test: /^(?:N|n|[Nn]o|NO|[Ff]alse|FALSE|[Oo]ff|OFF)$/,
     resolve: () => new Scalar.Scalar(false),
     stringify: boolStringify
 };
@@ -78334,19 +78991,19 @@ exports.trueTag = trueTag;
 
 /***/ }),
 
-/***/ 2843:
+/***/ 9693:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Scalar = __nccwpck_require__(9902);
-var stringifyNumber = __nccwpck_require__(5972);
+var Scalar = __nccwpck_require__(7404);
+var stringifyNumber = __nccwpck_require__(8970);
 
 const floatNaN = {
     identify: value => typeof value === 'number',
     default: true,
     tag: 'tag:yaml.org,2002:float',
-    test: /^[-+]?\.(?:inf|Inf|INF|nan|NaN|NAN)$/,
+    test: /^(?:[-+]?\.(?:inf|Inf|INF)|\.nan|\.NaN|\.NAN)$/,
     resolve: (str) => str.slice(-3).toLowerCase() === 'nan'
         ? NaN
         : str[0] === '-'
@@ -78391,12 +79048,12 @@ exports.floatNaN = floatNaN;
 
 /***/ }),
 
-/***/ 2508:
+/***/ 7370:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var stringifyNumber = __nccwpck_require__(5972);
+var stringifyNumber = __nccwpck_require__(8970);
 
 const intIdentify = (value) => typeof value === 'bigint' || Number.isInteger(value);
 function intResolve(str, offset, radix, { intAsBigInt }) {
@@ -78474,16 +79131,94 @@ exports.intOct = intOct;
 
 /***/ }),
 
-/***/ 9520:
+/***/ 2435:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var YAMLSeq = __nccwpck_require__(8862);
-var toJS = __nccwpck_require__(4776);
-var Node = __nccwpck_require__(1222);
-var YAMLMap = __nccwpck_require__(799);
-var pairs = __nccwpck_require__(1444);
+var identity = __nccwpck_require__(2222);
+var Scalar = __nccwpck_require__(7404);
+
+// If the value associated with a merge key is a single mapping node, each of
+// its key/value pairs is inserted into the current mapping, unless the key
+// already exists in it. If the value associated with the merge key is a
+// sequence, then this sequence is expected to contain mapping nodes and each
+// of these nodes is merged in turn according to its order in the sequence.
+// Keys in mapping nodes earlier in the sequence override keys specified in
+// later mapping nodes. -- http://yaml.org/type/merge.html
+const MERGE_KEY = '<<';
+const merge = {
+    identify: value => value === MERGE_KEY ||
+        (typeof value === 'symbol' && value.description === MERGE_KEY),
+    default: 'key',
+    tag: 'tag:yaml.org,2002:merge',
+    test: /^<<$/,
+    resolve: () => Object.assign(new Scalar.Scalar(Symbol(MERGE_KEY)), {
+        addToJSMap: addMergeToJSMap
+    }),
+    stringify: () => MERGE_KEY
+};
+const isMergeKey = (ctx, key) => (merge.identify(key) ||
+    (identity.isScalar(key) &&
+        (!key.type || key.type === Scalar.Scalar.PLAIN) &&
+        merge.identify(key.value))) &&
+    ctx?.doc.schema.tags.some(tag => tag.tag === merge.tag && tag.default);
+function addMergeToJSMap(ctx, map, value) {
+    const source = resolveAliasValue(ctx, value);
+    if (identity.isSeq(source))
+        for (const it of source.items)
+            mergeValue(ctx, map, it);
+    else if (Array.isArray(source))
+        for (const it of source)
+            mergeValue(ctx, map, it);
+    else
+        mergeValue(ctx, map, source);
+}
+function mergeValue(ctx, map, value) {
+    const source = resolveAliasValue(ctx, value);
+    if (!identity.isMap(source))
+        throw new Error('Merge sources must be maps or map aliases');
+    const srcMap = source.toJSON(null, ctx, Map);
+    for (const [key, value] of srcMap) {
+        if (map instanceof Map) {
+            if (!map.has(key))
+                map.set(key, value);
+        }
+        else if (map instanceof Set) {
+            map.add(key);
+        }
+        else if (!Object.prototype.hasOwnProperty.call(map, key)) {
+            Object.defineProperty(map, key, {
+                value,
+                writable: true,
+                enumerable: true,
+                configurable: true
+            });
+        }
+    }
+    return map;
+}
+function resolveAliasValue(ctx, value) {
+    return ctx && identity.isAlias(value) ? value.resolve(ctx.doc, ctx) : value;
+}
+
+exports.addMergeToJSMap = addMergeToJSMap;
+exports.isMergeKey = isMergeKey;
+exports.merge = merge;
+
+
+/***/ }),
+
+/***/ 1994:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+
+
+var identity = __nccwpck_require__(2222);
+var toJS = __nccwpck_require__(4886);
+var YAMLMap = __nccwpck_require__(1877);
+var YAMLSeq = __nccwpck_require__(2400);
+var pairs = __nccwpck_require__(6262);
 
 class YAMLOMap extends YAMLSeq.YAMLSeq {
     constructor() {
@@ -78507,7 +79242,7 @@ class YAMLOMap extends YAMLSeq.YAMLSeq {
             ctx.onCreate(map);
         for (const pair of this.items) {
             let key, value;
-            if (Node.isPair(pair)) {
+            if (identity.isPair(pair)) {
                 key = toJS.toJS(pair.key, '', ctx);
                 value = toJS.toJS(pair.value, key, ctx);
             }
@@ -78519,6 +79254,12 @@ class YAMLOMap extends YAMLSeq.YAMLSeq {
             map.set(key, value);
         }
         return map;
+    }
+    static from(schema, iterable, ctx) {
+        const pairs$1 = pairs.createPairs(schema, iterable, ctx);
+        const omap = new this();
+        omap.items = pairs$1.items;
+        return omap;
     }
 }
 YAMLOMap.tag = 'tag:yaml.org,2002:omap';
@@ -78532,7 +79273,7 @@ const omap = {
         const pairs$1 = pairs.resolvePairs(seq, onError);
         const seenKeys = [];
         for (const { key } of pairs$1.items) {
-            if (Node.isScalar(key)) {
+            if (identity.isScalar(key)) {
                 if (seenKeys.includes(key.value)) {
                     onError(`Ordered maps must not include duplicate keys: ${key.value}`);
                 }
@@ -78543,12 +79284,7 @@ const omap = {
         }
         return Object.assign(new YAMLOMap(), pairs$1);
     },
-    createNode(schema, iterable, ctx) {
-        const pairs$1 = pairs.createPairs(schema, iterable, ctx);
-        const omap = new YAMLOMap();
-        omap.items = pairs$1.items;
-        return omap;
-    }
+    createNode: (schema, iterable, ctx) => YAMLOMap.from(schema, iterable, ctx)
 };
 
 exports.YAMLOMap = YAMLOMap;
@@ -78557,23 +79293,23 @@ exports.omap = omap;
 
 /***/ }),
 
-/***/ 1444:
+/***/ 6262:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Node = __nccwpck_require__(1222);
-var Pair = __nccwpck_require__(1618);
-var Scalar = __nccwpck_require__(9902);
-var YAMLSeq = __nccwpck_require__(8862);
+var identity = __nccwpck_require__(2222);
+var Pair = __nccwpck_require__(9184);
+var Scalar = __nccwpck_require__(7404);
+var YAMLSeq = __nccwpck_require__(2400);
 
 function resolvePairs(seq, onError) {
-    if (Node.isSeq(seq)) {
+    if (identity.isSeq(seq)) {
         for (let i = 0; i < seq.items.length; ++i) {
             let item = seq.items[i];
-            if (Node.isPair(item))
+            if (identity.isPair(item))
                 continue;
-            else if (Node.isMap(item)) {
+            else if (identity.isMap(item)) {
                 if (item.items.length > 1)
                     onError('Each pair must have its own sequence indicator');
                 const pair = item.items[0] || new Pair.Pair(new Scalar.Scalar(null));
@@ -78589,7 +79325,7 @@ function resolvePairs(seq, onError) {
                 }
                 item = pair;
             }
-            seq.items[i] = Node.isPair(item) ? item : new Pair.Pair(item);
+            seq.items[i] = identity.isPair(item) ? item : new Pair.Pair(item);
         }
     }
     else
@@ -78620,8 +79356,9 @@ function createPairs(schema, iterable, ctx) {
                     key = keys[0];
                     value = it[key];
                 }
-                else
-                    throw new TypeError(`Expected { key: value } tuple: ${it}`);
+                else {
+                    throw new TypeError(`Expected tuple with one key, not ${keys.length} keys`);
+                }
             }
             else {
                 key = it;
@@ -78645,23 +79382,24 @@ exports.resolvePairs = resolvePairs;
 
 /***/ }),
 
-/***/ 4778:
+/***/ 4824:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var map = __nccwpck_require__(4586);
-var _null = __nccwpck_require__(7227);
-var seq = __nccwpck_require__(6547);
-var string = __nccwpck_require__(3823);
-var binary = __nccwpck_require__(7908);
-var bool = __nccwpck_require__(917);
-var float = __nccwpck_require__(2843);
-var int = __nccwpck_require__(2508);
-var omap = __nccwpck_require__(9520);
-var pairs = __nccwpck_require__(1444);
-var set = __nccwpck_require__(9985);
-var timestamp = __nccwpck_require__(3497);
+var map = __nccwpck_require__(8144);
+var _null = __nccwpck_require__(5929);
+var seq = __nccwpck_require__(3445);
+var string = __nccwpck_require__(593);
+var binary = __nccwpck_require__(2502);
+var bool = __nccwpck_require__(6799);
+var float = __nccwpck_require__(9693);
+var int = __nccwpck_require__(7370);
+var merge = __nccwpck_require__(2435);
+var omap = __nccwpck_require__(1994);
+var pairs = __nccwpck_require__(6262);
+var set = __nccwpck_require__(5711);
+var timestamp = __nccwpck_require__(7591);
 
 const schema = [
     map.map,
@@ -78678,6 +79416,7 @@ const schema = [
     float.floatExp,
     float.float,
     binary.binary,
+    merge.merge,
     omap.omap,
     pairs.pairs,
     set.set,
@@ -78691,14 +79430,14 @@ exports.schema = schema;
 
 /***/ }),
 
-/***/ 9985:
+/***/ 5711:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Node = __nccwpck_require__(1222);
-var Pair = __nccwpck_require__(1618);
-var YAMLMap = __nccwpck_require__(799);
+var identity = __nccwpck_require__(2222);
+var Pair = __nccwpck_require__(9184);
+var YAMLMap = __nccwpck_require__(1877);
 
 class YAMLSet extends YAMLMap.YAMLMap {
     constructor(schema) {
@@ -78707,7 +79446,7 @@ class YAMLSet extends YAMLMap.YAMLMap {
     }
     add(key) {
         let pair;
-        if (Node.isPair(key))
+        if (identity.isPair(key))
             pair = key;
         else if (key &&
             typeof key === 'object' &&
@@ -78727,8 +79466,8 @@ class YAMLSet extends YAMLMap.YAMLMap {
      */
     get(key, keepPair) {
         const pair = YAMLMap.findPair(this.items, key);
-        return !keepPair && Node.isPair(pair)
-            ? Node.isScalar(pair.key)
+        return !keepPair && identity.isPair(pair)
+            ? identity.isScalar(pair.key)
                 ? pair.key.value
                 : pair.key
             : pair;
@@ -78755,6 +79494,17 @@ class YAMLSet extends YAMLMap.YAMLMap {
         else
             throw new Error('Set items must all have null values');
     }
+    static from(schema, iterable, ctx) {
+        const { replacer } = ctx;
+        const set = new this(schema);
+        if (iterable && Symbol.iterator in Object(iterable))
+            for (let value of iterable) {
+                if (typeof replacer === 'function')
+                    value = replacer.call(iterable, value, value);
+                set.items.push(Pair.createPair(value, null, ctx));
+            }
+        return set;
+    }
 }
 YAMLSet.tag = 'tag:yaml.org,2002:set';
 const set = {
@@ -78763,8 +79513,9 @@ const set = {
     nodeClass: YAMLSet,
     default: false,
     tag: 'tag:yaml.org,2002:set',
+    createNode: (schema, iterable, ctx) => YAMLSet.from(schema, iterable, ctx),
     resolve(map, onError) {
-        if (Node.isMap(map)) {
+        if (identity.isMap(map)) {
             if (map.hasAllNullValues(true))
                 return Object.assign(new YAMLSet(), map);
             else
@@ -78773,17 +79524,6 @@ const set = {
         else
             onError('Expected a mapping for this tag');
         return map;
-    },
-    createNode(schema, iterable, ctx) {
-        const { replacer } = ctx;
-        const set = new YAMLSet(schema);
-        if (iterable && Symbol.iterator in Object(iterable))
-            for (let value of iterable) {
-                if (typeof replacer === 'function')
-                    value = replacer.call(iterable, value, value);
-                set.items.push(Pair.createPair(value, null, ctx));
-            }
-        return set;
     }
 };
 
@@ -78793,12 +79533,12 @@ exports.set = set;
 
 /***/ }),
 
-/***/ 3497:
+/***/ 7591:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var stringifyNumber = __nccwpck_require__(5972);
+var stringifyNumber = __nccwpck_require__(8970);
 
 /** Internal types handle bigint as number, because TS can't figure it out. */
 function parseSexagesimal(str, asBigInt) {
@@ -78843,7 +79583,7 @@ function stringifySexagesimal(node) {
     }
     return (sign +
         parts
-            .map(n => (n < 10 ? '0' + String(n) : String(n)))
+            .map(n => String(n).padStart(2, '0'))
             .join(':')
             .replace(/000000\d*$/, '') // % 60 may introduce error
     );
@@ -78895,7 +79635,7 @@ const timestamp = {
         }
         return new Date(date);
     },
-    stringify: ({ value }) => value.toISOString().replace(/((T00:00)?:00)?\.000Z$/, '')
+    stringify: ({ value }) => value?.toISOString().replace(/(T00:00:00)?\.000Z$/, '') ?? ''
 };
 
 exports.floatTime = floatTime;
@@ -78905,7 +79645,7 @@ exports.timestamp = timestamp;
 
 /***/ }),
 
-/***/ 4638:
+/***/ 2088:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -78921,6 +79661,8 @@ const FOLD_QUOTED = 'quoted';
 function foldFlowLines(text, indent, mode = 'flow', { indentAtStart, lineWidth = 80, minContentWidth = 20, onFold, onOverflow } = {}) {
     if (!lineWidth || lineWidth < 0)
         return text;
+    if (lineWidth < minContentWidth)
+        minContentWidth = 0;
     const endStep = Math.max(1 + minContentWidth, 1 + lineWidth - indent.length);
     if (text.length <= endStep)
         return text;
@@ -78940,7 +79682,7 @@ function foldFlowLines(text, indent, mode = 'flow', { indentAtStart, lineWidth =
     let escStart = -1;
     let escEnd = -1;
     if (mode === FOLD_BLOCK) {
-        i = consumeMoreIndentedLines(text, i);
+        i = consumeMoreIndentedLines(text, i, indent.length);
         if (i !== -1)
             end = i + endStep;
     }
@@ -78964,8 +79706,8 @@ function foldFlowLines(text, indent, mode = 'flow', { indentAtStart, lineWidth =
         }
         if (ch === '\n') {
             if (mode === FOLD_BLOCK)
-                i = consumeMoreIndentedLines(text, i);
-            end = i + endStep;
+                i = consumeMoreIndentedLines(text, i, indent.length);
+            end = i + indent.length + endStep;
             split = undefined;
         }
         else {
@@ -79033,15 +79775,24 @@ function foldFlowLines(text, indent, mode = 'flow', { indentAtStart, lineWidth =
  * Presumes `i + 1` is at the start of a line
  * @returns index of last newline in more-indented block
  */
-function consumeMoreIndentedLines(text, i) {
-    let ch = text[i + 1];
+function consumeMoreIndentedLines(text, i, indent) {
+    let end = i;
+    let start = i + 1;
+    let ch = text[start];
     while (ch === ' ' || ch === '\t') {
-        do {
-            ch = text[(i += 1)];
-        } while (ch && ch !== '\n');
-        ch = text[i + 1];
+        if (i < start + indent) {
+            ch = text[++i];
+        }
+        else {
+            do {
+                ch = text[++i];
+            } while (ch && ch !== '\n');
+            end = i;
+            start = i + 1;
+            ch = text[start];
+        }
     }
-    return i;
+    return end;
 }
 
 exports.FOLD_BLOCK = FOLD_BLOCK;
@@ -79052,15 +79803,15 @@ exports.foldFlowLines = foldFlowLines;
 
 /***/ }),
 
-/***/ 9757:
+/***/ 7391:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var anchors = __nccwpck_require__(9457);
-var Node = __nccwpck_require__(1222);
-var stringifyComment = __nccwpck_require__(7100);
-var stringifyString = __nccwpck_require__(880);
+var anchors = __nccwpck_require__(1695);
+var identity = __nccwpck_require__(2222);
+var stringifyComment = __nccwpck_require__(302);
+var stringifyString = __nccwpck_require__(9786);
 
 function createStringifyContext(doc, options) {
     const opt = Object.assign({
@@ -79079,6 +79830,7 @@ function createStringifyContext(doc, options) {
         nullStr: 'null',
         simpleKeys: false,
         singleQuote: null,
+        trailingComma: false,
         trueStr: 'true',
         verifyAliasOrder: true
     }, doc.schema.toStringOptions, options);
@@ -79111,9 +79863,14 @@ function getTagObject(tags, item) {
     }
     let tagObj = undefined;
     let obj;
-    if (Node.isScalar(item)) {
+    if (identity.isScalar(item)) {
         obj = item.value;
-        const match = tags.filter(t => t.identify?.(obj));
+        let match = tags.filter(t => t.identify?.(obj));
+        if (match.length > 1) {
+            const testMatch = match.filter(t => t.test);
+            if (testMatch.length > 0)
+                match = testMatch;
+        }
         tagObj =
             match.find(t => t.format === item.format) ?? match.find(t => !t.format);
     }
@@ -79122,7 +79879,7 @@ function getTagObject(tags, item) {
         tagObj = tags.find(t => t.nodeClass && obj instanceof t.nodeClass);
     }
     if (!tagObj) {
-        const name = obj?.constructor?.name ?? typeof obj;
+        const name = obj?.constructor?.name ?? (obj === null ? 'null' : typeof obj);
         throw new Error(`Tag not resolved for ${name} value`);
     }
     return tagObj;
@@ -79132,20 +79889,20 @@ function stringifyProps(node, tagObj, { anchors: anchors$1, doc }) {
     if (!doc.directives)
         return '';
     const props = [];
-    const anchor = (Node.isScalar(node) || Node.isCollection(node)) && node.anchor;
+    const anchor = (identity.isScalar(node) || identity.isCollection(node)) && node.anchor;
     if (anchor && anchors.anchorIsValid(anchor)) {
         anchors$1.add(anchor);
         props.push(`&${anchor}`);
     }
-    const tag = node.tag ? node.tag : tagObj.default ? null : tagObj.tag;
+    const tag = node.tag ?? (tagObj.default ? null : tagObj.tag);
     if (tag)
         props.push(doc.directives.tagString(tag));
     return props.join(' ');
 }
 function stringify(item, ctx, onComment, onChompKeep) {
-    if (Node.isPair(item))
+    if (identity.isPair(item))
         return item.toString(ctx, onComment, onChompKeep);
-    if (Node.isAlias(item)) {
+    if (identity.isAlias(item)) {
         if (ctx.doc.directives)
             return item.toString(ctx);
         if (ctx.resolvedAliases?.has(item)) {
@@ -79160,22 +79917,21 @@ function stringify(item, ctx, onComment, onChompKeep) {
         }
     }
     let tagObj = undefined;
-    const node = Node.isNode(item)
+    const node = identity.isNode(item)
         ? item
         : ctx.doc.createNode(item, { onTagObj: o => (tagObj = o) });
-    if (!tagObj)
-        tagObj = getTagObject(ctx.doc.schema.tags, node);
+    tagObj ?? (tagObj = getTagObject(ctx.doc.schema.tags, node));
     const props = stringifyProps(node, tagObj, ctx);
     if (props.length > 0)
         ctx.indentAtStart = (ctx.indentAtStart ?? 0) + props.length + 1;
     const str = typeof tagObj.stringify === 'function'
         ? tagObj.stringify(node, ctx, onComment, onChompKeep)
-        : Node.isScalar(node)
+        : identity.isScalar(node)
             ? stringifyString.stringifyString(node, ctx, onComment, onChompKeep)
             : node.toString(ctx, onComment, onChompKeep);
     if (!props)
         return str;
-    return Node.isScalar(node) || str[0] === '{' || str[0] === '['
+    return identity.isScalar(node) || str[0] === '{' || str[0] === '['
         ? `${props} ${str}`
         : `${props}\n${ctx.indent}${str}`;
 }
@@ -79186,15 +79942,14 @@ exports.stringify = stringify;
 
 /***/ }),
 
-/***/ 3541:
+/***/ 3035:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Collection = __nccwpck_require__(58);
-var Node = __nccwpck_require__(1222);
-var stringify = __nccwpck_require__(9757);
-var stringifyComment = __nccwpck_require__(7100);
+var identity = __nccwpck_require__(2222);
+var stringify = __nccwpck_require__(7391);
+var stringifyComment = __nccwpck_require__(302);
 
 function stringifyCollection(collection, ctx, options) {
     const flow = ctx.inFlow ?? collection.flow;
@@ -79209,15 +79964,15 @@ function stringifyBlockCollection({ comment, items }, ctx, { blockItemPrefix, fl
     for (let i = 0; i < items.length; ++i) {
         const item = items[i];
         let comment = null;
-        if (Node.isNode(item)) {
+        if (identity.isNode(item)) {
             if (!chompKeep && item.spaceBefore)
                 lines.push('');
             addCommentBefore(ctx, lines, item.commentBefore, chompKeep);
             if (item.comment)
                 comment = item.comment;
         }
-        else if (Node.isPair(item)) {
-            const ik = Node.isNode(item.key) ? item.key : null;
+        else if (identity.isPair(item)) {
+            const ik = identity.isNode(item.key) ? item.key : null;
             if (ik) {
                 if (!chompKeep && ik.spaceBefore)
                     lines.push('');
@@ -79252,7 +80007,7 @@ function stringifyBlockCollection({ comment, items }, ctx, { blockItemPrefix, fl
         onChompKeep();
     return str;
 }
-function stringifyFlowCollection({ comment, items }, ctx, { flowChars, itemIndent, onComment }) {
+function stringifyFlowCollection({ items }, ctx, { flowChars, itemIndent }) {
     const { indent, indentStep, flowCollectionPadding: fcPadding, options: { commentString } } = ctx;
     itemIndent += indentStep;
     const itemCtx = Object.assign({}, ctx, {
@@ -79266,15 +80021,15 @@ function stringifyFlowCollection({ comment, items }, ctx, { flowChars, itemInden
     for (let i = 0; i < items.length; ++i) {
         const item = items[i];
         let comment = null;
-        if (Node.isNode(item)) {
+        if (identity.isNode(item)) {
             if (item.spaceBefore)
                 lines.push('');
             addCommentBefore(ctx, lines, item.commentBefore, false);
             if (item.comment)
                 comment = item.comment;
         }
-        else if (Node.isPair(item)) {
-            const ik = Node.isNode(item.key) ? item.key : null;
+        else if (identity.isPair(item)) {
+            const ik = identity.isNode(item.key) ? item.key : null;
             if (ik) {
                 if (ik.spaceBefore)
                     lines.push('');
@@ -79282,55 +80037,58 @@ function stringifyFlowCollection({ comment, items }, ctx, { flowChars, itemInden
                 if (ik.comment)
                     reqNewline = true;
             }
-            const iv = Node.isNode(item.value) ? item.value : null;
+            const iv = identity.isNode(item.value) ? item.value : null;
             if (iv) {
                 if (iv.comment)
                     comment = iv.comment;
                 if (iv.commentBefore)
                     reqNewline = true;
             }
-            else if (item.value == null && ik && ik.comment) {
+            else if (item.value == null && ik?.comment) {
                 comment = ik.comment;
             }
         }
         if (comment)
             reqNewline = true;
         let str = stringify.stringify(item, itemCtx, () => (comment = null));
-        if (i < items.length - 1)
+        reqNewline || (reqNewline = lines.length > linesAtValue || str.includes('\n'));
+        if (i < items.length - 1) {
             str += ',';
+        }
+        else if (ctx.options.trailingComma) {
+            if (ctx.options.lineWidth > 0) {
+                reqNewline || (reqNewline = lines.reduce((sum, line) => sum + line.length + 2, 2) +
+                    (str.length + 2) >
+                    ctx.options.lineWidth);
+            }
+            if (reqNewline) {
+                str += ',';
+            }
+        }
         if (comment)
             str += stringifyComment.lineComment(str, itemIndent, commentString(comment));
-        if (!reqNewline && (lines.length > linesAtValue || str.includes('\n')))
-            reqNewline = true;
         lines.push(str);
         linesAtValue = lines.length;
     }
-    let str;
     const { start, end } = flowChars;
     if (lines.length === 0) {
-        str = start + end;
+        return start + end;
     }
     else {
         if (!reqNewline) {
             const len = lines.reduce((sum, line) => sum + line.length + 2, 2);
-            reqNewline = len > Collection.Collection.maxFlowStringSingleLineLength;
+            reqNewline = ctx.options.lineWidth > 0 && len > ctx.options.lineWidth;
         }
         if (reqNewline) {
-            str = start;
+            let str = start;
             for (const line of lines)
                 str += line ? `\n${indentStep}${indent}${line}` : '\n';
-            str += `\n${indent}${end}`;
+            return `${str}\n${indent}${end}`;
         }
         else {
-            str = `${start}${fcPadding}${lines.join(' ')}${fcPadding}${end}`;
+            return `${start}${fcPadding}${lines.join(' ')}${fcPadding}${end}`;
         }
     }
-    if (comment) {
-        str += stringifyComment.lineComment(str, commentString(comment), indent);
-        if (onComment)
-            onComment();
-    }
-    return str;
 }
 function addCommentBefore({ indent, options: { commentString } }, lines, comment, chompKeep) {
     if (comment && chompKeep)
@@ -79346,7 +80104,7 @@ exports.stringifyCollection = stringifyCollection;
 
 /***/ }),
 
-/***/ 7100:
+/***/ 302:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -79377,14 +80135,14 @@ exports.stringifyComment = stringifyComment;
 
 /***/ }),
 
-/***/ 2188:
+/***/ 2458:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Node = __nccwpck_require__(1222);
-var stringify = __nccwpck_require__(9757);
-var stringifyComment = __nccwpck_require__(7100);
+var identity = __nccwpck_require__(2222);
+var stringify = __nccwpck_require__(7391);
+var stringifyComment = __nccwpck_require__(302);
 
 function stringifyDocument(doc, options) {
     const lines = [];
@@ -79411,7 +80169,7 @@ function stringifyDocument(doc, options) {
     let chompKeep = false;
     let contentComment = null;
     if (doc.contents) {
-        if (Node.isNode(doc.contents)) {
+        if (identity.isNode(doc.contents)) {
             if (doc.contents.spaceBefore && hasDirectives)
                 lines.push('');
             if (doc.contents.commentBefore) {
@@ -79471,7 +80229,7 @@ exports.stringifyDocument = stringifyDocument;
 
 /***/ }),
 
-/***/ 5972:
+/***/ 8970:
 /***/ ((__unused_webpack_module, exports) => {
 
 
@@ -79482,11 +80240,12 @@ function stringifyNumber({ format, minFractionDigits, tag, value }) {
     const num = typeof value === 'number' ? value : Number(value);
     if (!isFinite(num))
         return isNaN(num) ? '.nan' : num < 0 ? '-.inf' : '.inf';
-    let n = JSON.stringify(value);
+    let n = Object.is(value, -0) ? '-0' : JSON.stringify(value);
     if (!format &&
         minFractionDigits &&
         (!tag || tag === 'tag:yaml.org,2002:float') &&
-        /^\d/.test(n)) {
+        /^-?\d/.test(n) &&
+        !n.includes('e')) {
         let i = n.indexOf('.');
         if (i < 0) {
             i = n.length;
@@ -79504,24 +80263,24 @@ exports.stringifyNumber = stringifyNumber;
 
 /***/ }),
 
-/***/ 3162:
+/***/ 7355:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Node = __nccwpck_require__(1222);
-var Scalar = __nccwpck_require__(9902);
-var stringify = __nccwpck_require__(9757);
-var stringifyComment = __nccwpck_require__(7100);
+var identity = __nccwpck_require__(2222);
+var Scalar = __nccwpck_require__(7404);
+var stringify = __nccwpck_require__(7391);
+var stringifyComment = __nccwpck_require__(302);
 
 function stringifyPair({ key, value }, ctx, onComment, onChompKeep) {
     const { allNullValues, doc, indent, indentStep, options: { commentString, indentSeq, simpleKeys } } = ctx;
-    let keyComment = (Node.isNode(key) && key.comment) || null;
+    let keyComment = (identity.isNode(key) && key.comment) || null;
     if (simpleKeys) {
         if (keyComment) {
             throw new Error('With simple keys, key nodes cannot have comments');
         }
-        if (Node.isCollection(key)) {
+        if (identity.isCollection(key) || (!identity.isNode(key) && typeof key === 'object')) {
             const msg = 'With simple keys, collection cannot be used as a key value';
             throw new Error(msg);
         }
@@ -79529,8 +80288,8 @@ function stringifyPair({ key, value }, ctx, onComment, onChompKeep) {
     let explicitKey = !simpleKeys &&
         (!key ||
             (keyComment && value == null && !ctx.inFlow) ||
-            Node.isCollection(key) ||
-            (Node.isScalar(key)
+            identity.isCollection(key) ||
+            (identity.isScalar(key)
                 ? key.type === Scalar.Scalar.BLOCK_FOLDED || key.type === Scalar.Scalar.BLOCK_LITERAL
                 : typeof key === 'object'));
     ctx = Object.assign({}, ctx, {
@@ -79575,7 +80334,7 @@ function stringifyPair({ key, value }, ctx, onComment, onChompKeep) {
             str += stringifyComment.lineComment(str, ctx.indent, commentString(keyComment));
     }
     let vsb, vcb, valueComment;
-    if (Node.isNode(value)) {
+    if (identity.isNode(value)) {
         vsb = !!value.spaceBefore;
         vcb = value.commentBefore;
         valueComment = value.comment;
@@ -79588,14 +80347,14 @@ function stringifyPair({ key, value }, ctx, onComment, onChompKeep) {
             value = doc.createNode(value);
     }
     ctx.implicitKey = false;
-    if (!explicitKey && !keyComment && Node.isScalar(value))
+    if (!explicitKey && !keyComment && identity.isScalar(value))
         ctx.indentAtStart = str.length + 1;
     chompKeep = false;
     if (!indentSeq &&
         indentStep.length >= 2 &&
         !ctx.inFlow &&
         !explicitKey &&
-        Node.isSeq(value) &&
+        identity.isSeq(value) &&
         !value.flow &&
         !value.tag &&
         !value.anchor) {
@@ -79612,14 +80371,14 @@ function stringifyPair({ key, value }, ctx, onComment, onChompKeep) {
             ws += `\n${stringifyComment.indentComment(cs, ctx.indent)}`;
         }
         if (valueStr === '' && !ctx.inFlow) {
-            if (ws === '\n')
+            if (ws === '\n' && valueComment)
                 ws = '\n\n';
         }
         else {
             ws += `\n${ctx.indent}`;
         }
     }
-    else if (!explicitKey && Node.isCollection(value)) {
+    else if (!explicitKey && identity.isCollection(value)) {
         const vs0 = valueStr[0];
         const nl0 = valueStr.indexOf('\n');
         const hasNewline = nl0 !== -1;
@@ -79663,16 +80422,16 @@ exports.stringifyPair = stringifyPair;
 
 /***/ }),
 
-/***/ 880:
+/***/ 9786:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Scalar = __nccwpck_require__(9902);
-var foldFlowLines = __nccwpck_require__(4638);
+var Scalar = __nccwpck_require__(7404);
+var foldFlowLines = __nccwpck_require__(2088);
 
-const getFoldOptions = (ctx) => ({
-    indentAtStart: ctx.indentAtStart,
+const getFoldOptions = (ctx, isBlock) => ({
+    indentAtStart: isBlock ? ctx.indent.length : ctx.indentAtStart,
     lineWidth: ctx.options.lineWidth,
     minContentWidth: ctx.options.minContentWidth
 });
@@ -79785,7 +80544,7 @@ function doubleQuotedString(value, ctx) {
     str = start ? str + json.slice(start) : json;
     return implicitKey
         ? str
-        : foldFlowLines.foldFlowLines(str, indent, foldFlowLines.FOLD_QUOTED, getFoldOptions(ctx));
+        : foldFlowLines.foldFlowLines(str, indent, foldFlowLines.FOLD_QUOTED, getFoldOptions(ctx, false));
 }
 function singleQuotedString(value, ctx) {
     if (ctx.options.singleQuote === false ||
@@ -79797,7 +80556,7 @@ function singleQuotedString(value, ctx) {
     const res = "'" + value.replace(/'/g, "''").replace(/\n+/g, `$&\n${indent}`) + "'";
     return ctx.implicitKey
         ? res
-        : foldFlowLines.foldFlowLines(res, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx));
+        : foldFlowLines.foldFlowLines(res, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx, false));
 }
 function quotedString(value, ctx) {
     const { singleQuote } = ctx.options;
@@ -79816,11 +80575,20 @@ function quotedString(value, ctx) {
     }
     return qs(value, ctx);
 }
+// The negative lookbehind avoids a polynomial search,
+// but isn't supported yet on Safari: https://caniuse.com/js-regexp-lookbehind
+let blockEndNewlines;
+try {
+    blockEndNewlines = new RegExp('(^|(?<!\n))\n+(?!\n|$)', 'g');
+}
+catch {
+    blockEndNewlines = /\n+(?!\n|$)/g;
+}
 function blockString({ comment, type, value }, ctx, onComment, onChompKeep) {
     const { blockQuote, commentString, lineWidth } = ctx.options;
     // 1. Block can't end in whitespace unless the last line is non-empty.
     // 2. Strings consisting of only whitespace are best rendered explicitly.
-    if (!blockQuote || /\n[\t ]+$/.test(value) || /^\s*$/.test(value)) {
+    if (!blockQuote || /\n[\t ]+$/.test(value)) {
         return quotedString(value, ctx);
     }
     const indent = ctx.indent ||
@@ -79859,7 +80627,7 @@ function blockString({ comment, type, value }, ctx, onComment, onChompKeep) {
         value = value.slice(0, -end.length);
         if (end[end.length - 1] === '\n')
             end = end.slice(0, -1);
-        end = end.replace(/\n+(?!\n|$)/g, `$&${indent}`);
+        end = end.replace(blockEndNewlines, `$&${indent}`);
     }
     // determine indent indicator from whitespace at value start
     let startWithSpace = false;
@@ -79880,35 +80648,43 @@ function blockString({ comment, type, value }, ctx, onComment, onChompKeep) {
         start = start.replace(/\n+/g, `$&${indent}`);
     }
     const indentSize = indent ? '2' : '1'; // root is at -1
-    let header = (literal ? '|' : '>') + (startWithSpace ? indentSize : '') + chomp;
+    // Leading | or > is added later
+    let header = (startWithSpace ? indentSize : '') + chomp;
     if (comment) {
         header += ' ' + commentString(comment.replace(/ ?[\r\n]+/g, ' '));
         if (onComment)
             onComment();
     }
-    if (literal) {
-        value = value.replace(/\n+/g, `$&${indent}`);
-        return `${header}\n${indent}${start}${value}${end}`;
+    if (!literal) {
+        const foldedValue = value
+            .replace(/\n+/g, '\n$&')
+            .replace(/(?:^|\n)([\t ].*)(?:([\n\t ]*)\n(?![\n\t ]))?/g, '$1$2') // more-indented lines aren't folded
+            //                ^ more-ind. ^ empty     ^ capture next empty lines only at end of indent
+            .replace(/\n+/g, `$&${indent}`);
+        let literalFallback = false;
+        const foldOptions = getFoldOptions(ctx, true);
+        if (blockQuote !== 'folded' && type !== Scalar.Scalar.BLOCK_FOLDED) {
+            foldOptions.onOverflow = () => {
+                literalFallback = true;
+            };
+        }
+        const body = foldFlowLines.foldFlowLines(`${start}${foldedValue}${end}`, indent, foldFlowLines.FOLD_BLOCK, foldOptions);
+        if (!literalFallback)
+            return `>${header}\n${indent}${body}`;
     }
-    value = value
-        .replace(/\n+/g, '\n$&')
-        .replace(/(?:^|\n)([\t ].*)(?:([\n\t ]*)\n(?![\n\t ]))?/g, '$1$2') // more-indented lines aren't folded
-        //                ^ more-ind. ^ empty     ^ capture next empty lines only at end of indent
-        .replace(/\n+/g, `$&${indent}`);
-    const body = foldFlowLines.foldFlowLines(`${start}${value}${end}`, indent, foldFlowLines.FOLD_BLOCK, getFoldOptions(ctx));
-    return `${header}\n${indent}${body}`;
+    value = value.replace(/\n+/g, `$&${indent}`);
+    return `|${header}\n${indent}${start}${value}${end}`;
 }
 function plainString(item, ctx, onComment, onChompKeep) {
     const { type, value } = item;
     const { actualString, implicitKey, indent, indentStep, inFlow } = ctx;
-    if ((implicitKey && /[\n[\]{},]/.test(value)) ||
+    if ((implicitKey && value.includes('\n')) ||
         (inFlow && /[[\]{},]/.test(value))) {
         return quotedString(value, ctx);
     }
-    if (!value ||
-        /^[\n\t ,[\]{}#&*!|>'"%@`]|^[?-]$|^[?-][ \t]|[\n:][ \t]|[ \t]\n|[\n\t ]#|[\n\t :]$/.test(value)) {
+    if (/^[\n\t ,[\]{}#&*!|>'"%@`]|^[?-]$|^[?-][ \t]|[\n:][ \t]|[ \t]\n|[\n\t ]#|[\n\t :]$/.test(value)) {
         // not allowed:
-        // - empty string, '-' or '?'
+        // - '-' or '?'
         // - start with an indicator character (except [?:-]) or /[?-] /
         // - '\n ', ': ' or ' \n' anywhere
         // - '#' not preceded by a non-space char
@@ -79945,7 +80721,7 @@ function plainString(item, ctx, onComment, onChompKeep) {
     }
     return implicitKey
         ? str
-        : foldFlowLines.foldFlowLines(str, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx));
+        : foldFlowLines.foldFlowLines(str, indent, foldFlowLines.FOLD_FLOW, getFoldOptions(ctx, false));
 }
 function stringifyString(item, ctx, onComment, onChompKeep) {
     const { implicitKey, inFlow } = ctx;
@@ -79991,12 +80767,12 @@ exports.stringifyString = stringifyString;
 
 /***/ }),
 
-/***/ 5785:
+/***/ 3975:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 
 
-var Node = __nccwpck_require__(1222);
+var identity = __nccwpck_require__(2222);
 
 const BREAK = Symbol('break visit');
 const SKIP = Symbol('skip children');
@@ -80033,7 +80809,7 @@ const REMOVE = Symbol('remove node');
  */
 function visit(node, visitor) {
     const visitor_ = initVisitor(visitor);
-    if (Node.isDocument(node)) {
+    if (identity.isDocument(node)) {
         const cd = visit_(null, node.contents, visitor_, Object.freeze([node]));
         if (cd === REMOVE)
             node.contents = null;
@@ -80052,12 +80828,12 @@ visit.SKIP = SKIP;
 visit.REMOVE = REMOVE;
 function visit_(key, node, visitor, path) {
     const ctrl = callVisitor(key, node, visitor, path);
-    if (Node.isNode(ctrl) || Node.isPair(ctrl)) {
+    if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
         replaceNode(key, path, ctrl);
         return visit_(key, ctrl, visitor, path);
     }
     if (typeof ctrl !== 'symbol') {
-        if (Node.isCollection(node)) {
+        if (identity.isCollection(node)) {
             path = Object.freeze(path.concat(node));
             for (let i = 0; i < node.items.length; ++i) {
                 const ci = visit_(i, node.items[i], visitor, path);
@@ -80071,7 +80847,7 @@ function visit_(key, node, visitor, path) {
                 }
             }
         }
-        else if (Node.isPair(node)) {
+        else if (identity.isPair(node)) {
             path = Object.freeze(path.concat(node));
             const ck = visit_('key', node.key, visitor, path);
             if (ck === BREAK)
@@ -80120,7 +80896,7 @@ function visit_(key, node, visitor, path) {
  */
 async function visitAsync(node, visitor) {
     const visitor_ = initVisitor(visitor);
-    if (Node.isDocument(node)) {
+    if (identity.isDocument(node)) {
         const cd = await visitAsync_(null, node.contents, visitor_, Object.freeze([node]));
         if (cd === REMOVE)
             node.contents = null;
@@ -80139,12 +80915,12 @@ visitAsync.SKIP = SKIP;
 visitAsync.REMOVE = REMOVE;
 async function visitAsync_(key, node, visitor, path) {
     const ctrl = await callVisitor(key, node, visitor, path);
-    if (Node.isNode(ctrl) || Node.isPair(ctrl)) {
+    if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
         replaceNode(key, path, ctrl);
         return visitAsync_(key, ctrl, visitor, path);
     }
     if (typeof ctrl !== 'symbol') {
-        if (Node.isCollection(node)) {
+        if (identity.isCollection(node)) {
             path = Object.freeze(path.concat(node));
             for (let i = 0; i < node.items.length; ++i) {
                 const ci = await visitAsync_(i, node.items[i], visitor, path);
@@ -80158,7 +80934,7 @@ async function visitAsync_(key, node, visitor, path) {
                 }
             }
         }
-        else if (Node.isPair(node)) {
+        else if (identity.isPair(node)) {
             path = Object.freeze(path.concat(node));
             const ck = await visitAsync_('key', node.key, visitor, path);
             if (ck === BREAK)
@@ -80196,34 +80972,34 @@ function initVisitor(visitor) {
 function callVisitor(key, node, visitor, path) {
     if (typeof visitor === 'function')
         return visitor(key, node, path);
-    if (Node.isMap(node))
+    if (identity.isMap(node))
         return visitor.Map?.(key, node, path);
-    if (Node.isSeq(node))
+    if (identity.isSeq(node))
         return visitor.Seq?.(key, node, path);
-    if (Node.isPair(node))
+    if (identity.isPair(node))
         return visitor.Pair?.(key, node, path);
-    if (Node.isScalar(node))
+    if (identity.isScalar(node))
         return visitor.Scalar?.(key, node, path);
-    if (Node.isAlias(node))
+    if (identity.isAlias(node))
         return visitor.Alias?.(key, node, path);
     return undefined;
 }
 function replaceNode(key, path, node) {
     const parent = path[path.length - 1];
-    if (Node.isCollection(parent)) {
+    if (identity.isCollection(parent)) {
         parent.items[key] = node;
     }
-    else if (Node.isPair(parent)) {
+    else if (identity.isPair(parent)) {
         if (key === 'key')
             parent.key = node;
         else
             parent.value = node;
     }
-    else if (Node.isDocument(parent)) {
+    else if (identity.isDocument(parent)) {
         parent.contents = node;
     }
     else {
-        const pt = Node.isAlias(parent) ? 'alias' : 'scalar';
+        const pt = identity.isAlias(parent) ? 'alias' : 'scalar';
         throw new Error(`Cannot replace node with ${pt} parent`);
     }
 }
@@ -83198,10 +83974,10 @@ function getIDToken(aud) {
 
 /***/ }),
 
-/***/ 53:
+/***/ 2025:
 /***/ ((module) => {
 
-module.exports = {"rE":"3.1.9"};
+module.exports = {"rE":"3.1.10"};
 
 /***/ })
 

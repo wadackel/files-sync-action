@@ -169,9 +169,11 @@ An array of every file path in the synchronized diff, including paths that were 
 
 ## Sync Configuration
 
-The configuration file for file synchronization can be written in YAML. By default, it refers to `.github/files-sync-config.yaml`. If you want to change the path, please modify the value of `inputs.config_file`.
+The configuration file for file synchronization can be written in YAML. By default, it refers to `.github/files-sync-config.yaml`. If you want to change the path, please modify the value of `inputs.config_file`. When the configured path does not exist, the other extension is tried as well, so `.github/files-sync-config.yml` is picked up by the default setting.
 
 The configuration file consists of a `settings` section, which defines common settings, and a `patterns` section, which defines individual file synchronization patterns. The contents defined in `settings` are inherited by all `patterns`.
+
+Inheritance treats scalar values and lists differently. A pattern overrides an inherited scalar such as `commit.prefix`, but list values such as `reviewers`, `assignees` and `labels` are **concatenated** with the inherited ones. A pattern therefore cannot drop or replace an entry that `settings` provides, and writing an empty list does not clear it. The [`PatternConfig` example](#patternconfig) below inherits `wadackel` as a reviewer and `files-sync` as a label, and adds its own on top of them.
 
 | Key        | Required | Type                   | Description                                                           |
 | :--------- | :------- | :--------------------- | :-------------------------------------------------------------------- |
@@ -279,6 +281,8 @@ patterns:
 
 Configure the details of the files to synchronize. When synchronizing a directory, you can use `exclude` to exclude only certain file patterns.
 
+Each `exclude` pattern is resolved relative to `from` and matched against the whole path, so `'*.txt'` only excludes text files sitting directly in the directory. Use `'**/*.txt'` to also exclude the ones in subdirectories. Specifying `exclude` on an entry that points at a single file has no effect and logs a warning.
+
 | Key       | Required | Type       | Description                                                                                                                                 |
 | :-------- | :------- | :--------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
 | `from`    | `true`   | `string`   | Source file or directory path for synchronization                                                                                           |
@@ -344,6 +348,8 @@ The following template variables are available for various keys:
 | `index`      | `number` | Index of the file synchronization pattern                                                                         |
 
 ### `PullRequestConfig`
+
+When a target repository ends up with no changes, no PR is created. Any sync PR left open from a previous run is closed and its synchronization branch is deleted before the Action moves on to the next repository.
 
 | Key         | Required | Type          | Description                                                                                                                                                                                 |
 | :---------- | :------- | :------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -421,6 +427,8 @@ The rendered message is split at the first line break: the first line becomes th
 | `immediate` | If possible, the PR is merged immediately                                                                                             |
 | `auto`      | Same as `immediate`, but the PR is marked as "auto-merge" if it cannot be immediately merged                                          |
 | `admin`     | Same as `immediate`, but PRs that are blocked due to repo policy are forcefully merged if the provided token has permissions to do so |
+
+If the target repository has a merge queue enabled, every mode except `admin` behaves as `auto`. A PR that cannot be merged is reported in the log and does not fail the workflow.
 
 ### `MergeStrategy`
 

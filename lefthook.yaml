@@ -7,7 +7,7 @@ pre-commit:
       stage_fixed: true
     oxlint:
       glob: '*.{js,ts,tsx}'
-      run: npx oxlint {staged_files}
+      run: npx oxlint --no-error-on-unmatched-pattern {staged_files}
 
 commit-msg:
   commands:

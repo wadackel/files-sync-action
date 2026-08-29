@@ -18,7 +18,7 @@ A customizable action that synchronizes files across multiple repositories.
 
 <div align="center">
 
-The following links are the actual PR and Workflow execution result logs:
+The following link is the actual PR produced by a synchronization run:
 
 [Actual PR][demo-pr]
 
@@ -236,7 +236,7 @@ Configure the synchronization pattern for files and directories and the target r
 | Key            | Required | Type                                | Description                                                                                           |
 | :------------- | :------- | :---------------------------------- | :---------------------------------------------------------------------------------------------------- |
 | `files`        | `true`   | Array<string \| [FileConfig]>       | List of files to synchronize. Supports files and directories.                                         |
-| `delete_files` | `true`   | Array<string \| [DeleteFileConfig]> | List of files or directories to delete from repositories the specified repositories.                  |
+| `delete_files` | `false`  | Array<string \| [DeleteFileConfig]> | List of files or directories to delete from the specified repositories.                               |
 | `repositories` | `true`   | Array<string>                       | List of repositories (optionally with target branches) to synchronize the files specified in `files`. |
 | `commit`       | `false`  | [CommitConfig]                      | Various settings related to commits                                                                   |
 | `branch`       | `false`  | [BranchConfig]                      | Various settings related to branches                                                                  |
@@ -381,7 +381,7 @@ Configure the merge of the automatically generated PR when synchronizing files.
 | :-------------- | :------- | :-------------- | :------------------------------------------------------------------------------------------------------------------------------- |
 | `mode`          | `false`  | [MergeMode]     | The mode under which the PR merge is configured                                                                                  |
 | `strategy`      | `false`  | [MergeStrategy] | The strategy to use for merging the automatically generated PR                                                                   |
-| `delete_branch` | `false`  | `boolean`       | Flag to delete the synchronization branch if the automatically generated PR is successfully merged (ignored if `modw` is 'auto') |
+| `delete_branch` | `false`  | `boolean`       | Flag to delete the synchronization branch if the automatically generated PR is successfully merged (ignored if `mode` is 'auto') |
 | `commit`        | `false`  | [CommitConfig]  | Various settings related to merge commits                                                                                        |
 
 ### `MergeMode`
@@ -481,7 +481,6 @@ $ pnpm build && node test.js
 [micromatch]: https://github.com/micromatch/micromatch
 [fine-grained-pat]: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token#creating-a-fine-grained-personal-access-token
 [demo-pr]: https://github.com/wadackel/files-sync-action-sandbox1/pull/1
-[demo-workflow-log]: https://github.com/wadackel/files-sync-action/actions/runs/4740171900/jobs/8415765398
 [SettingsConfig]: #settingsconfig
 [PatternConfig]: #patternconfig
 [CommitConfig]: #commitconfig
@@ -491,3 +490,4 @@ $ pnpm build && node test.js
 [MergeMode]: #mergemode
 [MergeStrategy]: #mergestrategy
 [FileConfig]: #fileconfig
+[DeleteFileConfig]: #deletefileconfig

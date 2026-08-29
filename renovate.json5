@@ -21,6 +21,16 @@
 
   prConcurrentLimit: 0,
 
+  // Version updates alone never refresh the lockfile, so a caret range that already
+  // permits a fixed release keeps resolving to the version it first locked. Refresh
+  // weekly instead. A refresh that moves a runtime dependency changes dist/index.js,
+  // so the branch fails CI until dist/ is rebuilt by hand; commit that rebuild as
+  // `fix:` to release the corrected bundle.
+  lockFileMaintenance: {
+    enabled: true,
+    automerge: false,
+  },
+
   packageRules: [
     // GitHub Actions packages
     {

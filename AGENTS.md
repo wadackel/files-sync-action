@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents when working with code in this repository.
 
 ## Project Overview
 
@@ -67,7 +67,7 @@ All code, comments, and documentation must be written in English:
 - Inline comments and JSDoc comments
 - Commit messages
 - Pull request titles and descriptions
-- Documentation files (README.md, CLAUDE.md, etc.)
+- Documentation files (README.md, AGENTS.md, etc.)
 
 This ensures consistency and accessibility for international contributors.
 
